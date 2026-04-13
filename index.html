@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentWorld | Orchestration for Strong Agents</title>
+  <meta
+    name="description"
+    content="AgentWorld is a graph-native control plane for strong agents such as Claude Code and Codex."
+  >
+  <meta property="og:title" content="AgentWorld">
+  <meta
+    property="og:description"
+    content="Run strong agents as operators in one programmable execution graph."
+  >
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/agentworld-hero.jpg">
+  <meta name="theme-color" content="#101312">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header class="site-header" data-header>
+    <a class="brand" href="#top" aria-label="AgentWorld home">
+      <span class="brand-mark">A</span>
+      <span class="brand-text">AgentWorld</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-toggle>
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav class="site-nav" id="site-nav" data-site-nav>
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#runtime">Runtime</a>
+      <a href="#case">Case</a>
+      <a href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-overlay">
+        <p class="eyebrow">Graph-native orchestration for strong coding agents</p>
+        <h1>Run Claude Code, Codex, and future operators in one programmable execution graph.</h1>
+        <p class="hero-copy">
+          AgentWorld treats strong agents as the execution primitive. Provider-specific control stays inside
+          controllers, operators expose one uniform surface, and the runtime owns state, routing, tracing,
+          checkpoints, and recovery.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">
+            View Repository
+          </a>
+          <a class="button button-secondary" href="https://github.com/black-yt/AgentWorld/blob/main/README.md" target="_blank" rel="noreferrer">
+            Read Design Doc
+          </a>
+        </div>
+        <div class="hero-facts" data-reveal>
+          <div>
+            <span class="fact-label">Primitive</span>
+            <strong>Operator, not prompt loop</strong>
+          </div>
+          <div>
+            <span class="fact-label">Boundary</span>
+            <strong>Controller isolates provider control</strong>
+          </div>
+          <div>
+            <span class="fact-label">Runtime</span>
+            <strong>Checkpoint, resume, trace, handoff</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-light" id="overview">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Overview</p>
+        <h2>The framework is built for the agent era after SDK wrappers.</h2>
+        <p class="section-copy">
+          Earlier frameworks organized prompts, tools, and model calls. AgentWorld assumes the worker below the
+          runtime is already a strong agent with tools, files, sessions, and long execution traces. The problem
+          becomes orchestration: how to control them, route work between them, and keep the whole system replayable.
+        </p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-block" data-reveal>
+          <h3>Controller Layer</h3>
+          <p>
+            Claude Code, Codex, and future operators each need different session handling, tool permission mapping,
+            event parsing, timeout control, and workspace binding.
+          </p>
+        </article>
+        <article class="feature-block" data-reveal>
+          <h3>Operator Surface</h3>
+          <p>
+            The graph never speaks provider-specific dialects. Each node invokes a uniform operator request and
+            receives normalized messages, artifacts, state patches, and execution metrics.
+          </p>
+        </article>
+        <article class="feature-block" data-reveal>
+          <h3>A2A Protocol</h3>
+          <p>
+            Agent-to-agent traffic becomes explicit. Messages, handoffs, tool results, and artifacts move as typed
+            payloads instead of hidden prompt glue.
+          </p>
+        </article>
+        <article class="feature-block" data-reveal>
+          <h3>Graph Runtime</h3>
+          <p>
+            Scheduling, branching, checkpointing, replay, interruption, and trace storage belong to the runtime, not
+            to each operator implementation.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="architecture">
+      <div class="section-head narrow" data-reveal>
+        <p class="eyebrow">Architecture</p>
+        <h2>One control plane, four hard boundaries.</h2>
+        <p class="section-copy">
+          The system stays understandable because each layer owns a narrow job. Provider complexity stops at the
+          controller. Collaboration semantics live in the protocol. Scheduling stays in the runtime.
+        </p>
+      </div>
+      <div class="layer-stack">
+        <article class="layer-row" data-reveal>
+          <div class="layer-tag">01</div>
+          <div class="layer-body">
+            <h3>Controllers drive real agents.</h3>
+            <p>
+              Provider-specific adapters create or resume sessions, map tool policies, parse event streams, preserve
+              raw traces, and translate failures into runtime-safe signals.
+            </p>
+          </div>
+          <div class="layer-points">
+            <span>Claude Code</span>
+            <span>Codex</span>
+            <span>OpenClaw</span>
+          </div>
+        </article>
+        <article class="layer-row" data-reveal>
+          <div class="layer-tag">02</div>
+          <div class="layer-body">
+            <h3>Operators expose one execution contract.</h3>
+            <p>
+              Each operator receives an objective, a state view, an inbox, artifacts, working directory rules, and
+              session policy. It returns normalized outputs that the graph can route without special cases.
+            </p>
+          </div>
+          <div class="layer-points">
+            <span>Objective</span>
+            <span>Inbox</span>
+            <span>Artifacts</span>
+          </div>
+        </article>
+        <article class="layer-row" data-reveal>
+          <div class="layer-tag">03</div>
+          <div class="layer-body">
+            <h3>A2A protocol keeps collaboration explicit.</h3>
+            <p>
+              Message payloads, handoffs, tool outputs, and artifact references move through a typed channel. Shared
+              state and inter-agent communication remain separate on purpose.
+            </p>
+          </div>
+          <div class="layer-points">
+            <span>Messages</span>
+            <span>Tools</span>
+            <span>Handoffs</span>
+          </div>
+        </article>
+        <article class="layer-row" data-reveal>
+          <div class="layer-tag">04</div>
+          <div class="layer-body">
+            <h3>The graph runtime owns orchestration.</h3>
+            <p>
+              Graph compilation, routing, checkpoint persistence, resume, interrupt, and trace inspection stay in the
+              runtime. Nodes stay small. Runs stay inspectable.
+            </p>
+          </div>
+          <div class="layer-points">
+            <span>Graph</span>
+            <span>Checkpoint</span>
+            <span>Trace</span>
+          </div>
+        </article>
+      </div>
+      <div class="flow-strip" data-reveal>
+        <div class="flow-step">
+          <span>Build</span>
+          <strong>Define a graph of operator nodes</strong>
+        </div>
+        <div class="flow-step">
+          <span>Compile</span>
+          <strong>Freeze routing and runtime rules</strong>
+        </div>
+        <div class="flow-step">
+          <span>Invoke</span>
+          <strong>Run a controller-backed operator</strong>
+        </div>
+        <div class="flow-step">
+          <span>Route</span>
+          <strong>Merge state and forward A2A handoffs</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-accent" id="case">
+      <div class="case-grid">
+        <div class="case-visual" data-reveal>
+          <img src="assets/agentworld-collab.jpg" alt="People working across screens in a collaborative engineering setting">
+        </div>
+        <div class="case-copy-block" data-reveal>
+          <p class="eyebrow">Case</p>
+          <h2>A real Claude Code graph already runs through the runtime.</h2>
+          <p class="section-copy">
+            The current smoke flow binds a <code>ClaudeCodeController</code> to one operator, runs a planner node that
+            is allowed to use <code>Read</code>, forwards the result through the graph, and finishes with a reviewer
+            node. The observed run includes <code>tool_call</code>, <code>tool_result</code>, <code>PLAN READY</code>,
+            and <code>REVIEW READY</code>.
+          </p>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <pre><code>$ python examples/claude_real_smoke.py
+plan      tool_call
+plan      tool_result
+plan      PLAN READY
+review    REVIEW READY
+status    success</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-light" id="runtime">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Runtime Model</p>
+        <h2>What a production-grade multi-agent runtime needs next.</h2>
+        <p class="section-copy">
+          The execution model is narrow enough to stay implementable and strong enough to grow into a real operating
+          layer for multi-agent systems.
+        </p>
+      </div>
+      <div class="runtime-grid">
+        <article class="runtime-item" data-reveal>
+          <span class="runtime-index">1</span>
+          <h3>Unified operator request</h3>
+          <p>Objective, state slice, inbox, artifacts, working directory, tool policy, and timeout live in one request.</p>
+        </article>
+        <article class="runtime-item" data-reveal>
+          <span class="runtime-index">2</span>
+          <h3>Normalized operator result</h3>
+          <p>Status, messages, state patch, artifact outputs, handoffs, metrics, and trace references come back in one shape.</p>
+        </article>
+        <article class="runtime-item" data-reveal>
+          <span class="runtime-index">3</span>
+          <h3>Persistent execution state</h3>
+          <p>Checkpoint storage keeps every run resumable and makes interruption, replay, and audit practical instead of aspirational.</p>
+        </article>
+        <article class="runtime-item" data-reveal>
+          <span class="runtime-index">4</span>
+          <h3>Composable graph semantics</h3>
+          <p>Edges describe handoffs, branching, and review loops without leaking provider-specific control into the graph definition.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section section-cta">
+      <div class="cta-content" data-reveal>
+        <p class="eyebrow">Build</p>
+        <h2>Use strong agents as operators. Keep orchestration as software.</h2>
+        <p class="section-copy">
+          AgentWorld is moving toward a clean controller layer, an explicit A2A protocol, and a graph runtime that can
+          scale from smoke tests to long-running collaborative systems.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">
+            Open GitHub
+          </a>
+          <a class="button button-secondary" href="https://github.com/black-yt/AgentWorld/blob/main/examples/claude_real_smoke.py" target="_blank" rel="noreferrer">
+            Inspect the Smoke Case
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>AgentWorld</p>
+    <p>Strong-agent orchestration for the next generation of multi-agent systems.</p>
+  </footer>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>
