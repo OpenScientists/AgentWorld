@@ -792,6 +792,13 @@ This validates A2A message passing and artifact handoff behavior.
 │   ├── protocol_a2a.md
 │   ├── controller_contract.md
 │   └── graph_runtime.md
+├── skills/
+│   ├── README.md
+│   └── <skill-name>/
+│       ├── SKILL.md
+│       ├── references/
+│       ├── scripts/
+│       └── assets/
 ├── src/
 │   └── agentworld/
 │       ├── controller/

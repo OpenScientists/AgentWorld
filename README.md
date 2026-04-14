@@ -16,7 +16,7 @@
 
 **Orchestrating strong agents from controller-level execution to graph-level collaboration**
 
-[Quick Start](#-quick-start) | [Skill Marketplace](#-skill-marketplace) | [How It Works](#%EF%B8%8F-how-it-works) | [Supported Operators](#-supported-operators) | [Examples](#-examples) | [Roadmap](#-roadmap)
+[Quick Start](#quick-start) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
 
 </div>
 
@@ -82,6 +82,7 @@ That changes the architecture:
 - **2026-04-13** Published the GitHub Pages site under `docs/` and split the long architecture note into a dedicated design document.
 - **2026-04-13** Refined the public repository surface so README and site stay English-first while private notes remain local and ignored.
 
+<a id="quick-start"></a>
 ## 🚀 Quick Start
 
 Install the package:
@@ -110,6 +111,7 @@ python examples/claude_real_smoke.py
 
 The Claude smoke case requires a working local `claude` CLI and an authenticated environment.
 
+<a id="how-it-works"></a>
 ## ⚙️ How It Works
 
 ```mermaid
@@ -168,6 +170,7 @@ flowchart TB
 | A2A Protocol | messages, tool outputs, handoffs, artifact references |
 | Runtime | scheduling, state merge, checkpoint, resume, interrupt, trace |
 
+<a id="skill-marketplace"></a>
 ## 🧩 Skill Marketplace
 
 AgentWorld treats skills as reusable execution modules that can be attached to individual operator nodes.
@@ -242,6 +245,7 @@ description: What this skill should be used for.
 - ...
 ```
 
+<a id="supported-operators"></a>
 ## 🤖 Supported Operators
 
 AgentWorld is designed to schedule strong agents through provider-specific controllers:
@@ -252,6 +256,7 @@ AgentWorld is designed to schedule strong agents through provider-specific contr
 | **Codex** | Scaffolded | Contract is present, runtime path still needs full implementation |
 | **OpenClaw** | Scaffolded | Contract is present, controller behavior still needs full implementation |
 
+<a id="examples"></a>
 ## 🧪 Examples
 
 ### Planner -> Coder -> Reviewer
@@ -276,6 +281,17 @@ Validates:
 - real event parsing from Claude Code
 - `tool_call` and `tool_result` normalization
 - planner-to-reviewer graph handoff
+
+### Real Claude Code Skill Graph
+
+[examples/claude_skill_smoke.py](examples/claude_skill_smoke.py)
+
+Validates:
+
+- repo-local skill loading
+- skill content injection into the operator instruction
+- real Claude Code execution without persistent Claude configuration changes
+- skill-aware output generation
 
 ## 📁 Repository Structure
 
@@ -309,6 +325,7 @@ Validates:
 - Architecture note: [docs/architecture.md](docs/architecture.md)
 - Skill marketplace: [skills/README.md](skills/README.md)
 
+<a id="roadmap"></a>
 ## 🗺️ Roadmap
 
 - complete the Codex controller

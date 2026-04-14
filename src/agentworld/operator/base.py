@@ -12,6 +12,7 @@ from ..controller.base import (
 )
 from ..protocol.a2a import A2AEnvelope, Handoff
 from ..protocol.artifacts import Artifact
+from ..skill_loader import LoadedSkill, load_skills
 from ..utils import utc_now
 from .models import (
     OperatorError,
@@ -45,38 +46,42 @@ class DefaultOperator:
         self.instruction_prefix = instruction_prefix or ""
 
     def invoke(self, request: OperatorRequest, runtime: RuntimeContext) -> OperatorResult:
+        loaded_skills = self._load_skills(request)
         start_request = ControllerStartRequest(
             session_id=request.metadata.get("session_id"),
             working_dir=request.working_dir,
-            instruction=self._build_instruction(request),
+            instruction=self._build_instruction(request, loaded_skills),
             tool_policy=request.tool_policy.to_dict(),
             timeout_s=request.timeout_s,
             metadata={
                 "graph_id": runtime.graph_id,
                 "node_name": runtime.node_name,
                 "skills": list(request.skills),
+                "skill_paths": [str(skill.skill_file) for skill in loaded_skills],
             },
         )
         handle = self.controller.start(start_request)
         return self._collect_result(request, runtime, handle)
 
     def resume(self, request: OperatorResumeRequest, runtime: RuntimeContext) -> OperatorResult:
+        loaded_skills = self._load_skills(request)
         resume_request = ControllerResumeRequest(
             session_id=request.session_ref,
             working_dir=request.working_dir,
-            instruction=self._build_instruction(request),
+            instruction=self._build_instruction(request, loaded_skills),
             tool_policy=request.tool_policy.to_dict(),
             timeout_s=request.timeout_s,
             metadata={
                 "graph_id": runtime.graph_id,
                 "node_name": runtime.node_name,
                 "skills": list(request.skills),
+                "skill_paths": [str(skill.skill_file) for skill in loaded_skills],
             },
         )
         handle = self.controller.resume(resume_request)
         return self._collect_result(request, runtime, handle)
 
-    def _build_instruction(self, request: OperatorRequest) -> str:
+    def _build_instruction(self, request: OperatorRequest, loaded_skills: list[LoadedSkill]) -> str:
         payload = {
             "role": request.role,
             "objective": request.objective,
@@ -84,12 +89,18 @@ class DefaultOperator:
             "inbox": [message.to_dict() for message in request.inbox],
             "artifacts": [artifact.to_dict() for artifact in request.artifacts],
             "skills": list(request.skills),
+            "loaded_skills": [skill.to_dict() for skill in loaded_skills],
             "metadata": request.metadata,
         }
         rendered = json.dumps(payload, indent=2, ensure_ascii=True, default=str)
         if self.instruction_prefix:
             return f"{self.instruction_prefix}\n\n{rendered}"
         return rendered
+
+    def _load_skills(self, request: OperatorRequest) -> list[LoadedSkill]:
+        if not request.skills:
+            return []
+        return load_skills(request.skills, working_dir=request.working_dir)
 
     def _collect_result(
         self,
