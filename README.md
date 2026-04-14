@@ -14,27 +14,31 @@
 [![Operators](https://img.shields.io/badge/Operators-3-orange.svg)](#-supported-operators)
 [![GitHub stars](https://img.shields.io/github/stars/black-yt/AgentWorld?style=social)](https://github.com/black-yt/AgentWorld)
 
-**Orchestrating strong agents from controller-level execution to graph-level collaboration**
+**Building the open ecosystem platform for strong agents**
 
 [Quick Start](#quick-start) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
 
 </div>
 
 <p align="center">
-  <img src="docs/assets/agentworld-hero.jpg" alt="AgentWorld Overview" width="700">
+  <img src="docs/assets/agentworld-vision-diagram.svg" alt="Strong-Agent Ecosystem Platform Vision" width="1100">
 </p>
 
 ---
 
-AgentWorld is a graph runtime for multi-agent systems where the execution primitive is a **strong agent** such as Claude Code, Codex, or OpenClaw, rather than a single model call.
+AgentWorld is the foundation repository for a broader **open ecosystem platform for strong agents**.
 
-Instead of wrapping another LLM SDK, AgentWorld separates:
+The long-term direction is larger than a graph runtime alone: it aims to provide a shared platform for **infrastructure**, **skills**, **benchmarks**, **applications**, and **community collaboration** around strong agents such as Claude Code, Codex, and OpenClaw.
 
-- provider-specific control into **controllers**
-- upper-layer execution into **operators**
-- inter-agent communication into an explicit **A2A protocol**
-- scheduling, checkpointing, and replay into a **graph runtime**
-- reusable domain expertise into a **skill marketplace**
+This repository currently implements one core slice of that platform:
+
+- provider-specific control through **controllers**
+- uniform upper-layer execution through **operators**
+- structured inter-agent communication through an explicit **A2A protocol**
+- scheduling, checkpointing, and replay through a **graph runtime**
+- reusable domain guidance through a repo-local **skill marketplace**
+
+In other words, the graph runtime is an important implemented subsystem here, but it is not the full platform story.
 
 ## Overview
 
@@ -42,38 +46,49 @@ Instead of wrapping another LLM SDK, AgentWorld separates:
 
 <table>
 <tr>
-<td align="center" width="25%">🧠<br/><b>Strong-Agent Runtime</b><br/><sub>Designed for Claude Code, Codex, OpenClaw, and other long-running operator-style agents</sub></td>
-<td align="center" width="25%">🕸️<br/><b>Graph-Native Execution</b><br/><sub>Nodes schedule operators, merge shared state, route handoffs, and coordinate recovery</sub></td>
-<td align="center" width="25%">🧩<br/><b>Per-Node Skills</b><br/><sub>Each operator node can load different skills for paper search, synthesis, experiment planning, and review</sub></td>
-<td align="center" width="25%">📦<br/><b>Recoverable Runs</b><br/><sub>Built around checkpoints, traceability, artifacts, and resumable execution semantics</sub></td>
+<td align="center" width="25%">🌐<br/><b>Open Platform Direction</b><br/><sub>A broader ecosystem vision spanning infrastructure, skills, benchmarks, applications, and community growth</sub></td>
+<td align="center" width="25%">🏗️<br/><b>Platform Foundation</b><br/><sub>This repository currently focuses on the controller, operator, protocol, runtime, and graph foundation layer</sub></td>
+<td align="center" width="25%">🧩<br/><b>Skill Platform Seed</b><br/><sub>Skills can already be packaged and loaded per node, forming the base of a larger skill platform</sub></td>
+<td align="center" width="25%">📦<br/><b>Recoverable Runtime</b><br/><sub>Checkpoints, traceability, artifacts, and resumable execution are treated as core runtime concerns</sub></td>
 </tr>
 <tr>
 <td align="center">🔌<br/><b>Controller Boundary</b><br/><sub>Provider-specific session lifecycle, tool policy, and stream parsing stay isolated</sub></td>
 <td align="center">📨<br/><b>Explicit A2A</b><br/><sub>Messages, tool results, handoffs, and artifacts are structured instead of prompt glue</sub></td>
-<td align="center">🧪<br/><b>Real Smoke Path</b><br/><sub>Claude Code already runs through the runtime in a real graph-backed case</sub></td>
-<td align="center">⚙️<br/><b>Lightweight Core</b><br/><sub>Pure Python package with CI, tests, and no heavy orchestration framework dependency</sub></td>
+<td align="center">🕸️<br/><b>Graph Runtime Slice</b><br/><sub>The graph layer is currently the most concrete orchestration subsystem, not the entire platform definition</sub></td>
+<td align="center">🧪<br/><b>Real Smoke Path</b><br/><sub>Claude Code already runs through the runtime in a real graph-backed case with CI-backed repository tests</sub></td>
 </tr>
 </table>
 
 ### 💡 Why AgentWorld
 
-Most older agent frameworks evaluate what a model can call.
+Most older agent frameworks focus on what a model can call.
 
-AgentWorld is built around what a strong agent can **run**:
+This platform direction starts from what a strong agent can actually **run**:
 
 - a real session
 - a working directory
 - a permission model
 - tool calls with side effects
 - long-running stateful execution
-- collaboration with other agents in the same graph
+- collaboration with other agents in the same system
 
 That changes the architecture:
 
-- a node is not just a prompt or function
 - a controller is not optional glue, it is the provider boundary
+- an operator is not just a prompt wrapper, it is a durable execution unit
 - a skill is not a marketing label, it is reusable execution guidance attached to an operator
-- a runtime must own checkpoint, resume, interrupt, trace, and artifact flow
+- a graph runtime is necessary, but it must live inside a broader platform that also supports skills, benchmarks, applications, and ecosystem growth
+- the runtime must own checkpoint, resume, interrupt, trace, and artifact flow
+
+### 🧭 Platform Scope
+
+| Layer | Role | Status in this repository |
+| --- | --- | --- |
+| **Platform Foundation** | controllers, operators, protocol, runtime, state, graph execution | **Current implementation focus** |
+| **Skill Platform** | reusable skill packaging, loading, references, scripts, future exchange | **Early implementation** |
+| **Benchmark + Evaluation** | benchmark tasks, scorecards, leaderboards, comparisons | **Planned** |
+| **Application Platform** | auto-research, reliable agentic systems, agentic RL, domain workflows | **Planned / example-driven** |
+| **Ecosystem Layer** | community contribution, collaboration, future marketplace dynamics | **Vision / planned** |
 
 ### 🆕 News
 
@@ -114,6 +129,8 @@ The Claude smoke case requires a working local `claude` CLI and an authenticated
 <a id="how-it-works"></a>
 ## ⚙️ How It Works
 
+The diagram below describes the **current foundation layer implemented in this repository**. It is not intended to represent the entire future ecosystem platform.
+
 ```mermaid
 flowchart TB
     U["User / App"]
@@ -150,7 +167,7 @@ flowchart TB
     O --> C3 --> A3
 ```
 
-### Core Execution Flow
+### Current Foundation Execution Flow
 
 1. Build a graph of operator-backed nodes
 2. Assign objective, role, tool policy, and skills to each node
@@ -160,7 +177,7 @@ flowchart TB
 6. Convert events into messages, artifacts, handoffs, and state patches
 7. Merge state, route the next nodes, and persist traceable execution state
 
-### Core Boundaries
+### Current Foundation Boundaries
 
 | Boundary | Responsibility |
 | --- | --- |
@@ -248,7 +265,7 @@ description: What this skill should be used for.
 <a id="supported-operators"></a>
 ## 🤖 Supported Operators
 
-AgentWorld is designed to schedule strong agents through provider-specific controllers:
+The current platform foundation is designed to schedule strong agents through provider-specific controllers:
 
 | Operator | Current State | Notes |
 | --- | --- | --- |
@@ -332,8 +349,10 @@ Validates:
 - complete the OpenClaw controller
 - harden checkpoint, resume, and trace persistence
 - extend graph routing and handoff semantics
-- grow the skill marketplace with stronger scientific and engineering skills
-- add more real-agent end-to-end examples
+- grow the skill platform with richer loading, references, and reusable execution assets
+- add benchmark and evaluation primitives for strong-agent workflows
+- publish stronger application-layer examples for research and domain-specific multi-agent systems
+- expand the public platform docs and ecosystem-facing site
 
 ---
 

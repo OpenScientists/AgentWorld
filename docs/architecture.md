@@ -1,11 +1,23 @@
-# AgentWorld Architecture
+# AgentWorld Platform Foundation Architecture
 
-> A general-purpose multi-agent orchestration framework for strong agents.
-> At the current stage, the priority is to define abstractions, boundaries, and the execution model, not to pile on implementation detail.
+> Architecture note for the foundation layer of a broader open ecosystem platform for strong agents.
+> This document focuses on the currently implemented foundation slice: controllers, operators, A2A, runtime, graph execution, and skill loading.
 
 ## 1. What This Is
 
-AgentWorld is not another agent framework in the older sense of "wrapping an LLM SDK with prompts and tools."
+AgentWorld is the foundation repository for a broader open ecosystem platform for strong agents.
+
+It is not another agent framework in the older sense of "wrapping an LLM SDK with prompts and tools."
+
+The broader platform direction includes:
+
+- a common infrastructure layer for controlling and coordinating strong agents
+- a reusable skill platform
+- benchmark and evaluation layers
+- application ecosystems such as auto research, reliable agentic systems, and domain workflows
+- community collaboration and future exchange layers
+
+This document focuses on the first part: the platform foundation.
 
 It is aimed at a different problem:
 
@@ -17,8 +29,9 @@ It is aimed at a different problem:
   - organizing collaboration between them
   - maintaining shared multi-agent state
   - letting them run reliably inside a graph-based workflow
+  - establishing the infrastructure base that higher platform layers can build on
 
-In one sentence, this framework is an operating layer / orchestration layer for strong agents, not an LLM invocation wrapper.
+In one sentence, this repository is building the platform foundation for strong agents, not another LLM invocation wrapper.
 
 ## 2. How It Differs from the Previous Generation of Agent Frameworks
 
@@ -52,26 +65,29 @@ That means the smallest meaningful unit is no longer "a model call", but "a dura
 
 ## 3. Design Goals
 
-The goals of this repository are straightforward:
+The goals of this foundation repository are straightforward:
 
 1. Define one unified operator interface for strong agents
 2. Push provider-specific control detail down into each controller
-3. Provide LangGraph-like graph orchestration where nodes are strong-agent operators
+3. Provide LangGraph-like graph orchestration as one core foundation subsystem where nodes are strong-agent operators
 4. Define an internal A2A protocol so agent communication is not just arbitrary text concatenation
 5. Make runs recoverable, traceable, interruptible, and replayable
+6. Establish the base layer that future skill, benchmark, and application systems can build on
 
 ## 4. Non-Goals
 
-At this stage, the framework is explicitly not trying to do the following:
+At this stage, the foundation repository is explicitly not trying to do the following:
 
 - reimplement the intelligence inside Claude Code / Codex / OpenClaw
 - force every agent into one prompt template
-- start with a full platform UI
+- ship the whole ecosystem platform surface from day one
 - support every provider and every runtime environment from day one
 - turn the framework into a giant all-in-one system
 
 Phase one only targets the minimum critical loop:
 `unified control -> graph scheduling -> state management -> multi-agent collaboration -> recoverable execution`
+
+Higher platform layers should be able to grow on top of that loop later.
 
 ## 5. Design Principles
 
@@ -126,7 +142,9 @@ That separation is what enables:
 - interrupt
 - tracing
 
-## 6. Overall Architecture
+## 6. Overall Foundation Architecture
+
+The diagram below describes the current platform foundation implemented in this repository. It does not attempt to show the entire future ecosystem platform.
 
 ```mermaid
 flowchart TB
@@ -169,7 +187,7 @@ flowchart TB
     C3 --> A3
 ```
 
-## 7. Five Core Layers of Abstraction
+## 7. Five Core Layers of the Current Foundation
 
 ### 7.1 Controller Layer
 
@@ -755,7 +773,7 @@ To keep the design document from exploding before the system exists, the first v
 
 ### 14.3 V1 excluded
 
-- a giant skill platform
+- the full skill platform or marketplace
 - a frontend UI
 - distributed scheduling
 - token economics or market mechanisms
@@ -865,4 +883,4 @@ This design clearly draws from two existing lines of work, but it should not cop
 
 ## 19. One-Sentence Summary
 
-AgentWorld should not "wrap another LLM agent". It should define a unified control interface, A2A protocol, graph orchestration model, and recoverable runtime for strong agents such as `Claude Code`, `Codex`, and `OpenClaw`, so that multi-agent systems become real infrastructure that can be built, scheduled, and traced.
+AgentWorld should not "wrap another LLM agent". It should establish the platform foundation for strong agents such as `Claude Code`, `Codex`, and `OpenClaw`: a unified control interface, A2A protocol, graph orchestration model, recoverable runtime, and skill-loading base that can support a broader ecosystem of benchmarks, applications, and community collaboration.

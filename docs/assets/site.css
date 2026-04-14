@@ -158,15 +158,12 @@ button {
 
 .hero {
   position: relative;
-  min-height: 84svh;
-  padding: calc(var(--header-height) + 60px) 24px 80px;
-  background:
-    linear-gradient(90deg, rgba(16, 19, 18, 0.82) 0%, rgba(16, 19, 18, 0.7) 36%, rgba(16, 19, 18, 0.35) 70%, rgba(16, 19, 18, 0.18) 100%),
-    url("agentworld-hero.jpg") center center / cover no-repeat;
+  padding: calc(var(--header-height) + 60px) 24px 72px;
+  background: linear-gradient(180deg, #101312 0%, #15211c 52%, #edf2ed 100%);
   color: var(--text-inverse);
 }
 
-.hero-overlay,
+.hero-shell,
 .section-head,
 .feature-grid,
 .layer-stack,
@@ -179,8 +176,19 @@ button {
   margin: 0 auto;
 }
 
+.hero-shell {
+  display: grid;
+  gap: 30px;
+}
+
 .hero-overlay {
   max-width: 760px;
+}
+
+.hero-visual img {
+  width: 100%;
+  border-radius: 24px;
+  box-shadow: var(--shadow);
 }
 
 .eyebrow {
@@ -434,17 +442,9 @@ button {
 
 .case-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 34px;
-  align-items: center;
-}
-
-.case-visual img {
-  width: 100%;
-  min-height: 520px;
-  object-fit: cover;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;
+  gap: 0;
 }
 
 .terminal {
@@ -577,18 +577,6 @@ button {
   .layer-points {
     grid-column: 2;
   }
-
-  .case-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .case-visual {
-    order: 2;
-  }
-
-  .case-copy-block {
-    order: 1;
-  }
 }
 
 @media (max-width: 860px) {
@@ -626,11 +614,8 @@ button {
   }
 
   .hero {
-    min-height: 88svh;
     padding: calc(var(--header-height) + 44px) 18px 64px;
-    background:
-      linear-gradient(180deg, rgba(16, 19, 18, 0.7) 0%, rgba(16, 19, 18, 0.64) 46%, rgba(16, 19, 18, 0.8) 100%),
-      url("agentworld-hero.jpg") center center / cover no-repeat;
+    background: linear-gradient(180deg, #101312 0%, #15211c 56%, #edf2ed 100%);
   }
 
   .hero h1 {
@@ -681,11 +666,6 @@ button {
   .layer-points {
     grid-column: auto;
   }
-
-  .case-visual img {
-    min-height: 340px;
-  }
-
   .site-footer {
     flex-direction: column;
     align-items: flex-start;

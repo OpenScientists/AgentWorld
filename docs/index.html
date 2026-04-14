@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AgentWorld | Orchestration for Strong Agents</title>
+  <title>AgentWorld | Open Ecosystem Platform for Strong Agents</title>
   <meta
     name="description"
-    content="AgentWorld is a graph-native control plane for strong agents such as Claude Code and Codex."
+    content="AgentWorld is building the platform foundation for an open ecosystem of strong agents, skills, benchmarks, and applications."
   >
   <meta property="og:title" content="AgentWorld">
   <meta
     property="og:description"
-    content="Run strong agents as operators in one programmable execution graph."
+    content="Build the common platform for strong-agent infrastructure, skills, benchmarks, and applications."
   >
   <meta property="og:type" content="website">
-  <meta property="og:image" content="assets/agentworld-hero.jpg">
+  <meta property="og:image" content="assets/agentworld-vision-diagram.svg">
   <meta name="theme-color" content="#101312">
   <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -40,35 +40,40 @@
 
   <main id="top">
     <section class="hero">
-      <div class="hero-overlay">
-        <p class="eyebrow">Graph-native orchestration for strong coding agents</p>
-        <h1>Run Claude Code, Codex, and future operators in one programmable execution graph.</h1>
-        <p class="hero-copy">
-          AgentWorld treats strong agents as the execution primitive. Provider-specific control stays inside
-          controllers, operators expose one uniform surface, and the runtime owns state, routing, tracing,
-          checkpoints, and recovery.
-        </p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">
-            View Repository
-          </a>
-          <a class="button button-secondary" href="https://github.com/black-yt/AgentWorld/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">
-            Read Design Doc
-          </a>
+      <div class="hero-shell">
+        <div class="hero-overlay">
+          <p class="eyebrow">Open ecosystem platform for strong agents</p>
+          <h1>Build the common platform for strong-agent infrastructure, skills, benchmarks, and applications.</h1>
+          <p class="hero-copy">
+            AgentWorld starts from the platform foundation: controllers, operators, A2A, runtime, graph execution,
+            and skills. The graph runtime is one implemented subsystem inside a broader ecosystem platform for strong
+            agents.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">
+              View Repository
+            </a>
+            <a class="button button-secondary" href="https://github.com/black-yt/AgentWorld/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">
+              Read Design Doc
+            </a>
+          </div>
+          <div class="hero-facts" data-reveal>
+            <div>
+              <span class="fact-label">Scope</span>
+              <strong>Platform foundation first</strong>
+            </div>
+            <div>
+              <span class="fact-label">Boundary</span>
+              <strong>Controller isolates provider control</strong>
+            </div>
+            <div>
+              <span class="fact-label">Growth</span>
+              <strong>Skills, benchmarks, applications</strong>
+            </div>
+          </div>
         </div>
-        <div class="hero-facts" data-reveal>
-          <div>
-            <span class="fact-label">Primitive</span>
-            <strong>Operator, not prompt loop</strong>
-          </div>
-          <div>
-            <span class="fact-label">Boundary</span>
-            <strong>Controller isolates provider control</strong>
-          </div>
-          <div>
-            <span class="fact-label">Runtime</span>
-            <strong>Checkpoint, resume, trace, handoff</strong>
-          </div>
+        <div class="hero-visual" data-reveal>
+          <img src="assets/agentworld-vision-diagram.svg" alt="Strong-agent ecosystem platform diagram">
         </div>
       </div>
     </section>
@@ -76,40 +81,40 @@
     <section class="section section-light" id="overview">
       <div class="section-head" data-reveal>
         <p class="eyebrow">Overview</p>
-        <h2>The framework is built for the agent era after SDK wrappers.</h2>
+        <h2>The goal is a platform, not only a graph runtime.</h2>
         <p class="section-copy">
           Earlier frameworks organized prompts, tools, and model calls. AgentWorld assumes the worker below the
-          runtime is already a strong agent with tools, files, sessions, and long execution traces. The problem
-          becomes orchestration: how to control them, route work between them, and keep the whole system replayable.
+          system is already a strong agent with tools, files, sessions, and long execution traces. This repository
+          focuses on the platform foundation that makes a broader ecosystem possible.
         </p>
       </div>
       <div class="feature-grid">
         <article class="feature-block" data-reveal>
-          <h3>Controller Layer</h3>
+          <h3>Platform Foundation</h3>
           <p>
-            Claude Code, Codex, and future operators each need different session handling, tool permission mapping,
-            event parsing, timeout control, and workspace binding.
+            Controllers, operators, A2A, runtime state, graph execution, and recoverability form the common base
+            layer for strong-agent systems.
           </p>
         </article>
         <article class="feature-block" data-reveal>
-          <h3>Operator Surface</h3>
+          <h3>Skill Platform Seed</h3>
           <p>
-            The graph never speaks provider-specific dialects. Each node invokes a uniform operator request and
-            receives normalized messages, artifacts, state patches, and execution metrics.
+            Skills can already be packaged and loaded per node. That creates the starting point for reusable
+            capabilities, references, scripts, and future exchange.
           </p>
         </article>
         <article class="feature-block" data-reveal>
-          <h3>A2A Protocol</h3>
+          <h3>Benchmark + Evaluation</h3>
           <p>
-            Agent-to-agent traffic becomes explicit. Messages, handoffs, tool results, and artifacts move as typed
-            payloads instead of hidden prompt glue.
+            A real platform also needs evaluation primitives, benchmark tasks, scorecards, and eventually public
+            leaderboards for strong-agent workflows.
           </p>
         </article>
         <article class="feature-block" data-reveal>
-          <h3>Graph Runtime</h3>
+          <h3>Application Ecosystem</h3>
           <p>
-            Scheduling, branching, checkpointing, replay, interruption, and trace storage belong to the runtime, not
-            to each operator implementation.
+            Auto research, reliable agentic systems, agentic RL, and domain-specific workflows sit above the common
+            platform instead of being hard-coded into the runtime layer.
           </p>
         </article>
       </div>
@@ -117,11 +122,12 @@
 
     <section class="section section-dark" id="architecture">
       <div class="section-head narrow" data-reveal>
-        <p class="eyebrow">Architecture</p>
-        <h2>One control plane, four hard boundaries.</h2>
+        <p class="eyebrow">Foundation Architecture</p>
+        <h2>One platform foundation, four hard boundaries.</h2>
         <p class="section-copy">
-          The system stays understandable because each layer owns a narrow job. Provider complexity stops at the
-          controller. Collaboration semantics live in the protocol. Scheduling stays in the runtime.
+          This page focuses on the currently implemented foundation layer. Provider complexity stops at the
+          controller. Collaboration semantics live in the protocol. The graph runtime stays one subsystem inside the
+          larger platform foundation.
         </p>
       </div>
       <div class="layer-stack">
@@ -173,10 +179,11 @@
         <article class="layer-row" data-reveal>
           <div class="layer-tag">04</div>
           <div class="layer-body">
-            <h3>The graph runtime owns orchestration.</h3>
+            <h3>The graph runtime is one foundation subsystem.</h3>
             <p>
               Graph compilation, routing, checkpoint persistence, resume, interrupt, and trace inspection stay in the
-              runtime. Nodes stay small. Runs stay inspectable.
+              runtime. Nodes stay small. Runs stay inspectable. This matters a lot, but it does not define the full
+              platform by itself.
             </p>
           </div>
           <div class="layer-points">
@@ -208,12 +215,9 @@
 
     <section class="section section-accent" id="case">
       <div class="case-grid">
-        <div class="case-visual" data-reveal>
-          <img src="assets/agentworld-collab.jpg" alt="People working across screens in a collaborative engineering setting">
-        </div>
         <div class="case-copy-block" data-reveal>
           <p class="eyebrow">Case</p>
-          <h2>A real Claude Code graph already runs through the runtime.</h2>
+          <h2>A real Claude Code foundation-layer path already runs.</h2>
           <p class="section-copy">
             The current smoke flow binds a <code>ClaudeCodeController</code> to one operator, runs a planner node that
             is allowed to use <code>Read</code>, forwards the result through the graph, and finishes with a reviewer
@@ -239,11 +243,11 @@ status    success</code></pre>
 
     <section class="section section-light" id="runtime">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Runtime Model</p>
-        <h2>What a production-grade multi-agent runtime needs next.</h2>
+        <p class="eyebrow">Foundation Runtime</p>
+        <h2>What the platform foundation needs next.</h2>
         <p class="section-copy">
-          The execution model is narrow enough to stay implementable and strong enough to grow into a real operating
-          layer for multi-agent systems.
+          The execution model is narrow enough to stay implementable and strong enough to grow into the shared
+          operating layer below a larger strong-agent ecosystem platform.
         </p>
       </div>
       <div class="runtime-grid">
@@ -273,10 +277,10 @@ status    success</code></pre>
     <section class="section section-cta">
       <div class="cta-content" data-reveal>
         <p class="eyebrow">Build</p>
-        <h2>Use strong agents as operators. Keep orchestration as software.</h2>
+        <h2>Build on the platform foundation. Grow into the ecosystem.</h2>
         <p class="section-copy">
-          AgentWorld is moving toward a clean controller layer, an explicit A2A protocol, and a graph runtime that can
-          scale from smoke tests to long-running collaborative systems.
+          AgentWorld starts with controllers, operators, A2A, skills, and graph runtime semantics, then expands
+          toward a broader platform for reusable skills, benchmarks, applications, and community collaboration.
         </p>
         <div class="hero-actions">
           <a class="button button-primary" href="https://github.com/black-yt/AgentWorld" target="_blank" rel="noreferrer">
@@ -292,7 +296,7 @@ status    success</code></pre>
 
   <footer class="site-footer">
     <p>AgentWorld</p>
-    <p>Strong-agent orchestration for the next generation of multi-agent systems.</p>
+    <p>Platform foundation for the strong-agent ecosystem.</p>
   </footer>
 
   <script src="assets/site.js"></script>
