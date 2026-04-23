@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..approval import ApprovalGate, AutoApproveGate
 from ..artifacts import ArtifactRequirement, validate_artifact_requirements, write_artifact_index
@@ -56,6 +56,9 @@ from ..workspace import (
     write_json,
     write_text,
 )
+
+
+AutoResearchProgressSink = Callable[[dict[str, Any]], None]
 
 
 AUTO_RESEARCH_STAGES: tuple[StageSpec, ...] = (
@@ -163,6 +166,7 @@ class AutoResearchWorkflow:
     stages: tuple[StageSpec, ...] = AUTO_RESEARCH_STAGES
     max_attempts: int = 3
     config: dict[str, Any] = field(default_factory=dict)
+    progress_sink: AutoResearchProgressSink | None = None
 
     def run(
         self,
@@ -185,6 +189,13 @@ class AutoResearchWorkflow:
         write_artifact_index(workspace.artifact_index, workspace.workspace_root)
         write_experiment_manifest(workspace)
         append_text(workspace.logs, f"Run started at {utc_now()}\n")
+        self._emit(
+            "run_started",
+            run_root=str(workspace.run_root),
+            stage_count=len(self.stages),
+            approval_mode=self.config.get("approval_mode"),
+            backend=self.config.get("backend"),
+        )
         return self._run_from_workspace(workspace)
 
     def resume(
@@ -203,6 +214,12 @@ class AutoResearchWorkflow:
             rebuild_memory_from_manifest(workspace, self.stages, approved)
             start_stage = rollback_stage
         append_text(workspace.logs, f"Run resumed at {utc_now()}\n")
+        self._emit(
+            "run_resumed",
+            run_root=str(workspace.run_root),
+            start_stage=start_stage.slug if start_stage else None,
+            rollback_stage=rollback_stage.slug if rollback_stage else None,
+        )
         return self._run_from_workspace(workspace, start_stage=start_stage)
 
     def _run_from_workspace(
@@ -212,10 +229,21 @@ class AutoResearchWorkflow:
     ) -> AutoResearchRunResult:
         approved = _approved_stage_slugs(load_run_manifest(workspace.run_manifest))
         stages_to_run = select_pending_stages(workspace, self.stages, start_stage=start_stage)
+        self._emit(
+            "stages_selected",
+            run_root=str(workspace.run_root),
+            stages=[stage.slug for stage in stages_to_run],
+        )
         for stage in stages_to_run:
             ok, errors = self._run_stage(workspace, stage)
             if not ok:
                 manifest = load_run_manifest(workspace.run_manifest)
+                self._emit(
+                    "run_failed",
+                    run_root=str(workspace.run_root),
+                    failed_stage=stage.slug,
+                    errors=list(errors),
+                )
                 return AutoResearchRunResult(
                     success=False,
                     workspace=workspace,
@@ -234,6 +262,7 @@ class AutoResearchWorkflow:
             completed_at=utc_now(),
         )
         append_text(workspace.logs, f"Run completed at {utc_now()}\n")
+        self._emit("run_completed", run_root=str(workspace.run_root), approved_stages=list(approved))
         return AutoResearchRunResult(success=True, workspace=workspace, approved_stages=tuple(approved))
 
     def _run_stage(self, workspace: RunWorkspace, stage: StageSpec) -> tuple[bool, list[str]]:
@@ -247,6 +276,14 @@ class AutoResearchWorkflow:
         for _ in range(self.max_attempts):
             write_text(workspace.stage_execution_marker_file(stage.slug), utc_now())
             mark_stage_running_manifest(workspace, self.stages, stage, attempt)
+            self._emit(
+                "stage_started",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+                continue_session=continue_session,
+            )
             prompt = render_stage_prompt(
                 stage=stage,
                 workspace=workspace,
@@ -261,6 +298,14 @@ class AutoResearchWorkflow:
                 {"kind": "stage_started", "stage": stage.slug, "attempt": attempt, "created_at": utc_now()},
             )
 
+            self._emit(
+                "operator_started",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+                prompt_path=str(workspace.prompt_path(stage.slug, attempt)),
+            )
             result = self.operator.run_stage(
                 StageRunRequest(
                     stage=stage,
@@ -270,6 +315,16 @@ class AutoResearchWorkflow:
                     continue_session=continue_session,
                 )
             )
+            self._emit(
+                "operator_finished",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+                success=result.success,
+                session_ref=result.session_ref,
+                event_count=len(result.events),
+            )
             self._write_operator_state(workspace, stage, attempt, result)
             if result.session_ref:
                 sync_stage_session_id(workspace, self.stages, stage, result.session_ref)
@@ -277,6 +332,14 @@ class AutoResearchWorkflow:
             result, errors = self._validate_or_repair_attempt(workspace, stage, attempt, prompt, result)
             if errors:
                 mark_stage_failed_manifest(workspace, self.stages, stage, "; ".join(errors))
+                self._emit(
+                    "stage_validation_failed",
+                    run_root=str(workspace.run_root),
+                    stage=stage.slug,
+                    stage_title=stage.title,
+                    attempt=attempt,
+                    errors=list(errors),
+                )
                 append_jsonl(
                     workspace.events,
                     {
@@ -300,6 +363,15 @@ class AutoResearchWorkflow:
             markdown = read_text(result.stage_file_path)
             artifact_paths = tuple(extract_path_references(markdown))
             mark_stage_review_manifest(workspace, self.stages, stage, attempt, artifact_paths)
+            self._emit(
+                "stage_awaiting_review",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+                draft_path=str(result.stage_file_path),
+                artifact_paths=list(artifact_paths),
+            )
             decision = self.approval_gate.review(
                 workspace=workspace,
                 stage=stage,
@@ -320,6 +392,14 @@ class AutoResearchWorkflow:
             )
             if decision.action == "approve":
                 self._promote_stage(workspace, stage, result.stage_file_path, markdown, attempt, artifact_paths)
+                self._emit(
+                    "stage_approved",
+                    run_root=str(workspace.run_root),
+                    stage=stage.slug,
+                    stage_title=stage.title,
+                    attempt=attempt,
+                    final_path=str(workspace.stage_final_path(stage.slug)),
+                )
                 return True, []
             if decision.action == "abort":
                 update_manifest_run_status(
@@ -330,13 +410,37 @@ class AutoResearchWorkflow:
                     current_stage_slug=stage.slug,
                     last_error=decision.reason or "Stage aborted by approval gate.",
                 )
+                self._emit(
+                    "stage_aborted",
+                    run_root=str(workspace.run_root),
+                    stage=stage.slug,
+                    stage_title=stage.title,
+                    attempt=attempt,
+                    reason=decision.reason,
+                )
                 return False, [decision.reason or "Stage aborted by approval gate."]
+            self._emit(
+                "stage_refine_requested",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+                feedback=decision.feedback,
+            )
             feedback = decision.feedback or "Human or automated reviewer requested refinement."
             continue_session = True
             attempt += 1
 
         error = f"Stage exceeded max_attempts={self.max_attempts}."
         mark_stage_failed_manifest(workspace, self.stages, stage, error)
+        self._emit(
+            "stage_failed",
+            run_root=str(workspace.run_root),
+            stage=stage.slug,
+            stage_title=stage.title,
+            attempt=attempt,
+            error=error,
+        )
         return False, list(last_errors or (error,))
 
     def _validate_or_repair_attempt(
@@ -349,7 +453,22 @@ class AutoResearchWorkflow:
     ) -> tuple[StageRunResult, list[str]]:
         errors = self._validate_stage_result(workspace, stage, result)
         if not errors:
+            self._emit(
+                "stage_validated",
+                run_root=str(workspace.run_root),
+                stage=stage.slug,
+                stage_title=stage.title,
+                attempt=attempt,
+            )
             return result, []
+        self._emit(
+            "stage_repair_started",
+            run_root=str(workspace.run_root),
+            stage=stage.slug,
+            stage_title=stage.title,
+            attempt=attempt,
+            errors=list(errors),
+        )
         repair_result = self._repair_stage(workspace, stage, attempt, prompt, result, tuple(errors))
         if repair_result is result:
             return result, errors
@@ -481,6 +600,12 @@ class AutoResearchWorkflow:
                 "updated_at": utc_now(),
             },
         )
+
+    def _emit(self, kind: str, **payload: Any) -> None:
+        if self.progress_sink is None:
+            return
+        event = {"kind": kind, "created_at": utc_now(), **payload}
+        self.progress_sink(event)
 
 
 def _approved_stage_slugs(manifest: RunManifest | None) -> tuple[str, ...]:

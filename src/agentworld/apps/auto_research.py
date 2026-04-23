@@ -7,7 +7,7 @@ from typing import Literal
 from ..approval import AutoApproveGate, TerminalApprovalGate
 from ..controller.claude_code import ClaudeCodeController
 from ..stage import ControllerStageOperator
-from ..workflows import AutoResearchRunResult, AutoResearchWorkflow
+from ..workflows import AutoResearchProgressSink, AutoResearchRunResult, AutoResearchWorkflow
 
 BackendName = Literal["claude-code"]
 ApprovalMode = Literal["manual", "validation-only"]
@@ -51,6 +51,7 @@ def create_auto_research_app(
     tools: tuple[str, ...] | list[str] | None = None,
     timeout_s: int = 14400,
     max_attempts: int = 3,
+    progress_sink: AutoResearchProgressSink | None = None,
 ) -> AutoResearchApp:
     config = AutoResearchAppConfig(
         backend=backend,
@@ -79,12 +80,14 @@ def create_auto_research_app(
             "permissions": {"permission_mode": config.permission_mode},
         },
         timeout_s=config.timeout_s,
+        event_sink=progress_sink,
     )
     approval_gate = AutoApproveGate() if config.approval_mode == "validation-only" else TerminalApprovalGate()
     workflow = AutoResearchWorkflow(
         operator=operator,
         approval_gate=approval_gate,
         max_attempts=config.max_attempts,
+        progress_sink=progress_sink,
         config={
             "backend": config.backend,
             "model": config.model or "default",
@@ -107,6 +110,7 @@ def run_auto_research(
     tools: tuple[str, ...] | list[str] | None = None,
     timeout_s: int = 14400,
     max_attempts: int = 3,
+    progress_sink: AutoResearchProgressSink | None = None,
 ) -> AutoResearchRunResult:
     app = create_auto_research_app(
         backend=backend,
@@ -117,5 +121,6 @@ def run_auto_research(
         tools=tools,
         timeout_s=timeout_s,
         max_attempts=max_attempts,
+        progress_sink=progress_sink,
     )
     return app.run(goal=goal, runs_dir=runs_dir, run_id=run_id)

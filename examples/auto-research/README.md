@@ -18,6 +18,17 @@ By default this uses Claude Code through `ClaudeCodeController`, so it requires:
 - an authenticated Claude Code environment
 - tool permissions sufficient to read, write, edit, and run local commands inside the run workspace
 
+The CLI prints live progress while the strong agent is running:
+
+- run root and selected stages
+- stage start and attempt mode
+- Claude session start
+- tool calls and tool results
+- assistant text excerpts
+- validation, repair, review, approval, and failure status
+
+Use `--quiet` to suppress progress lines and only print the final JSON result.
+
 The generated run is written under:
 
 ```text

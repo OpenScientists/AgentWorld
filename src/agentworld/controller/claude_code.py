@@ -4,6 +4,8 @@ import json
 import os
 import shutil
 import subprocess
+import threading
+import time
 from pathlib import Path
 from typing import Any, Iterable
 from uuid import uuid4
@@ -42,7 +44,13 @@ class ClaudeCodeController(AgentController):
         return self._run_command(command, request, session_id=session_id)
 
     def stream(self, handle: ControllerRunHandle):
-        yield from handle.events
+        if handle.metadata.get("_completed"):
+            yield from handle.events
+            return
+        if "command" not in handle.metadata:
+            yield from handle.events
+            return
+        yield from self._stream_command(handle)
 
     def interrupt(self, session_id: str) -> None:
         return None
@@ -91,62 +99,132 @@ class ClaudeCodeController(AgentController):
         session_id: str,
     ) -> ControllerRunHandle:
         cwd = str(request.working_dir or Path.cwd())
-        env = os.environ.copy()
-        env.update(request.env)
-
-        raw_stdout = ""
-        raw_stderr = ""
-        events: list[ControllerEvent] = []
-
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=cwd,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=request.timeout_s,
-                check=False,
-            )
-            raw_stdout = completed.stdout or ""
-            raw_stderr = completed.stderr or ""
-            events.extend(self._parse_stream_output(raw_stdout.splitlines()))
-            if completed.returncode != 0 and not any(event.kind == "failed" for event in events):
-                events.append(
-                    ControllerEvent(
-                        kind="failed",
-                        payload={
-                            "code": f"exit_{completed.returncode}",
-                            "message": raw_stderr.strip() or raw_stdout.strip() or "Claude command failed.",
-                            "details": {"command": command, "returncode": completed.returncode},
-                        },
-                    )
-                )
-        except subprocess.TimeoutExpired as exc:
-            raw_stdout = exc.stdout or ""
-            raw_stderr = exc.stderr or ""
-            events.extend(self._parse_stream_output(raw_stdout.splitlines()))
-            events.append(
-                ControllerEvent(
-                    kind="failed",
-                    payload={
-                        "code": "timeout",
-                        "message": f"Claude command timed out after {request.timeout_s} seconds.",
-                        "details": {"command": command, "timeout_s": request.timeout_s},
-                    },
-                )
-            )
 
         return ControllerRunHandle(
             session_id=session_id,
-            events=events,
+            events=[],
             metadata={
                 "command": command,
                 "cwd": cwd,
-                "stdout": raw_stdout,
-                "stderr": raw_stderr,
+                "env_updates": dict(request.env),
+                "timeout_s": request.timeout_s,
+                "stdout": "",
+                "stderr": "",
+                "_completed": False,
             },
         )
+
+    def _stream_command(self, handle: ControllerRunHandle):
+        command = [str(item) for item in handle.metadata["command"]]
+        cwd = str(handle.metadata.get("cwd") or Path.cwd())
+        env = os.environ.copy()
+        env.update(dict(handle.metadata.get("env_updates", {})))
+        timeout_s = handle.metadata.get("timeout_s")
+        raw_lines: list[str] = []
+        emitted: list[ControllerEvent] = []
+        timed_out = threading.Event()
+        start_time = time.monotonic()
+
+        try:
+            process = subprocess.Popen(
+                command,
+                cwd=cwd,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+        except OSError as exc:
+            event = ControllerEvent(
+                kind="failed",
+                payload={
+                    "code": "spawn_failed",
+                    "message": str(exc),
+                    "details": {"command": command, "cwd": cwd},
+                },
+            )
+            handle.events.append(event)
+            handle.metadata["_completed"] = True
+            yield event
+            return
+
+        if process.stdout is None:
+            event = ControllerEvent(
+                kind="failed",
+                payload={
+                    "code": "stdout_unavailable",
+                    "message": "Failed to capture Claude Code output stream.",
+                    "details": {"command": command, "cwd": cwd},
+                },
+            )
+            handle.events.append(event)
+            handle.metadata["_completed"] = True
+            yield event
+            return
+
+        def _on_timeout() -> None:
+            timed_out.set()
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+        timer: threading.Timer | None = None
+        if isinstance(timeout_s, (int, float)) and timeout_s > 0:
+            timer = threading.Timer(float(timeout_s), _on_timeout)
+            timer.daemon = True
+            timer.start()
+
+        try:
+            for raw_line in process.stdout:
+                if timed_out.is_set():
+                    break
+                line = raw_line.rstrip("\n")
+                raw_lines.append(line)
+                events = self._parse_stream_output([line])
+                emitted.extend(events)
+                for event in events:
+                    handle.events.append(event)
+                    yield event
+        finally:
+            if timer is not None:
+                timer.cancel()
+            process.stdout.close()
+
+        exit_code = process.wait()
+        raw_stdout = "\n".join(raw_lines)
+        handle.metadata["stdout"] = raw_stdout
+        handle.metadata["stderr"] = ""
+        handle.metadata["returncode"] = exit_code
+        handle.metadata["duration_s"] = round(time.monotonic() - start_time, 3)
+        handle.metadata["_completed"] = True
+
+        if timed_out.is_set():
+            event = ControllerEvent(
+                kind="failed",
+                payload={
+                    "code": "timeout",
+                    "message": f"Claude command timed out after {timeout_s} seconds.",
+                    "details": {"command": command, "timeout_s": timeout_s},
+                },
+            )
+            handle.events.append(event)
+            yield event
+            return
+
+        if exit_code != 0 and not any(event.kind == "failed" for event in emitted):
+            event = ControllerEvent(
+                kind="failed",
+                payload={
+                    "code": f"exit_{exit_code}",
+                    "message": raw_stdout.strip() or "Claude command failed.",
+                    "details": {"command": command, "returncode": exit_code},
+                },
+            )
+            handle.events.append(event)
+            yield event
 
     def _parse_stream_output(self, lines: Iterable[str]) -> list[ControllerEvent]:
         events: list[ControllerEvent] = []

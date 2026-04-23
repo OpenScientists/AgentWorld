@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -88,6 +90,61 @@ class ClaudeCodeControllerTests(unittest.TestCase):
         self.assertEqual(events[2].payload["text"], "DONE")
         self.assertEqual(events[3].payload["tool_use_id"], "tool-1")
         self.assertEqual(events[4].payload["result"], "DONE")
+
+    def test_stream_runs_command_and_yields_events_incrementally(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "fake_claude.py"
+            script.write_text(
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env python3
+                    import json
+
+                    records = [
+                        {
+                            "type": "system",
+                            "subtype": "init",
+                            "session_id": "sess-stream",
+                            "model": "fake-model",
+                            "tools": ["Read"],
+                            "permissionMode": "dontAsk",
+                        },
+                        {
+                            "type": "assistant",
+                            "message": {"content": [{"type": "text", "text": "STREAM READY"}]},
+                        },
+                        {
+                            "type": "result",
+                            "subtype": "success",
+                            "is_error": False,
+                            "result": "STREAM READY",
+                            "session_id": "sess-stream",
+                        },
+                    ]
+                    for record in records:
+                        print(json.dumps(record), flush=True)
+                    """
+                ),
+                encoding="utf-8",
+            )
+            script.chmod(0o755)
+            controller = ClaudeCodeController(command=str(script), permission_mode="dontAsk")
+            handle = controller.start(
+                ControllerStartRequest(
+                    instruction="ignored",
+                    working_dir=Path(tmp),
+                    tool_policy={"mode": "dontAsk"},
+                    timeout_s=5,
+                )
+            )
+
+            self.assertEqual(handle.events, [])
+            events = list(controller.stream(handle))
+            kinds = [event.kind for event in events]
+
+            self.assertEqual(kinds, ["session_started", "message_completed", "completed"])
+            self.assertTrue(handle.metadata["_completed"])
+            self.assertIn("STREAM READY", handle.metadata["stdout"])
 
 
 if __name__ == "__main__":

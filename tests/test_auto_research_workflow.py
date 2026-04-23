@@ -201,7 +201,8 @@ class RepairingStageOperator(ScriptedStageOperator):
 class AutoResearchWorkflowTests(unittest.TestCase):
     def test_auto_research_workflow_runs_all_stages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            workflow = AutoResearchWorkflow(operator=ScriptedStageOperator())
+            progress_events: list[dict] = []
+            workflow = AutoResearchWorkflow(operator=ScriptedStageOperator(), progress_sink=progress_events.append)
             result = workflow.run(goal="Study filesystem-native agent organizations.", runs_dir=Path(tmp))
 
             self.assertTrue(result.success)
@@ -217,6 +218,11 @@ class AutoResearchWorkflowTests(unittest.TestCase):
             artifact_index = json.loads(result.workspace.artifact_index.read_text(encoding="utf-8"))
             self.assertGreaterEqual(artifact_index["artifact_count"], 12)
             self.assertIn("## Approved Stage Summaries", read_text(result.workspace.memory))
+            progress_kinds = [event["kind"] for event in progress_events]
+            self.assertIn("run_started", progress_kinds)
+            self.assertIn("stage_started", progress_kinds)
+            self.assertIn("stage_approved", progress_kinds)
+            self.assertIn("run_completed", progress_kinds)
 
     def test_invalid_stage_can_be_repaired_inside_same_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

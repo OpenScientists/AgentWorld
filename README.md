@@ -134,13 +134,21 @@ Inspect the AutoR-style workflow CLI:
 python examples/auto-research/run.py --help
 ```
 
+Useful options:
+
+```bash
+python examples/auto-research/run.py --approval-mode validation-only "..."
+python examples/auto-research/run.py --quiet "..."
+python examples/auto-research/run.py --timeout 7200 --max-attempts 2 "..."
+```
+
 Run an AutoR-style workflow with the real Claude Code controller:
 
 ```bash
 python examples/auto-research/run.py "Study whether filesystem-native strong-agent organizations improve recoverability in long research workflows."
 ```
 
-This example uses the real Claude Code controller by default and requires a working authenticated `claude` CLI.
+This example uses the real Claude Code controller by default and requires a working authenticated `claude` CLI. The CLI prints live run, stage, Claude session, tool, validation, repair, and review progress. Use `--quiet` if you only want the final JSON result.
 
 Run the real Claude Code smoke graph:
 

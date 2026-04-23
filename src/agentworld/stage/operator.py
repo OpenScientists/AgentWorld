@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..controller.base import AgentController, ControllerResumeRequest, ControllerStartRequest
 from ..workspace import append_jsonl, read_text, write_text
@@ -19,6 +19,7 @@ class ControllerStageOperator:
     tool_policy: dict[str, Any] = field(default_factory=dict)
     timeout_s: int | None = None
     env: dict[str, str] = field(default_factory=dict)
+    event_sink: Callable[[dict[str, Any]], None] | None = None
 
     def run_stage(self, request: StageRunRequest) -> StageRunResult:
         session_file = request.workspace.stage_session_file(request.stage.slug)
@@ -67,6 +68,18 @@ class ControllerStageOperator:
                 "created_at": event.created_at,
             }
             events.append(event_payload)
+            self._emit(
+                {
+                    "kind": "controller_event",
+                    "stage": request.stage.slug,
+                    "stage_title": request.stage.title,
+                    "attempt": request.attempt,
+                    "operator_id": self.operator_id,
+                    "controller_event_kind": event.kind,
+                    "payload": event.payload,
+                    "created_at": event.created_at,
+                }
+            )
             append_jsonl(
                 request.workspace.events,
                 {
@@ -103,6 +116,11 @@ class ControllerStageOperator:
             metadata=metadata,
             events=tuple(events),
         )
+
+    def _emit(self, event: dict[str, Any]) -> None:
+        if self.event_sink is None:
+            return
+        self.event_sink(event)
 
     def repair_stage_summary(self, request: StageRepairRequest) -> StageRunResult:
         errors = "\n".join(f"- {error}" for error in request.validation_errors) or "- Stage draft was missing or invalid."

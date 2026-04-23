@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
@@ -28,6 +29,7 @@ def main() -> None:
         tools=args.tools,
         timeout_s=args.timeout,
         max_attempts=args.max_attempts,
+        progress_sink=None if args.quiet else print_progress,
     )
     print(json.dumps(
         {
@@ -54,6 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", help="Claude model name passed through to Claude Code.")
     parser.add_argument("--timeout", type=int, default=14400, help="Per-stage timeout in seconds.")
     parser.add_argument("--max-attempts", type=int, default=3)
+    parser.add_argument("--quiet", action="store_true", help="Only print the final JSON result.")
     parser.add_argument(
         "--permission-mode",
         default="default",
@@ -80,6 +83,136 @@ def resolve_goal(args: argparse.Namespace) -> str:
     if args.goal:
         return args.goal.strip()
     raise SystemExit("Provide a research goal or --goal-file.")
+
+
+def print_progress(event: dict[str, Any]) -> None:
+    kind = str(event.get("kind") or "")
+    if kind == "run_started":
+        print(
+            "\n[run] started"
+            f"\n  run_root: {event.get('run_root')}"
+            f"\n  backend: {event.get('backend')}"
+            f"\n  approval: {event.get('approval_mode')}"
+            f"\n  stages: {event.get('stage_count')}",
+            flush=True,
+        )
+        return
+    if kind == "run_resumed":
+        print(f"\n[run] resumed: {event.get('run_root')}", flush=True)
+        return
+    if kind == "stages_selected":
+        stages = ", ".join(str(item) for item in event.get("stages", []))
+        print(f"[run] stages selected: {stages or '(none)'}", flush=True)
+        return
+    if kind == "stage_started":
+        mode = "resume" if event.get("continue_session") else "start"
+        print(
+            f"\n[stage] {event.get('stage_title')} | attempt {event.get('attempt')} | {mode}",
+            flush=True,
+        )
+        return
+    if kind == "operator_started":
+        print(f"[agent] running Claude Code | prompt: {event.get('prompt_path')}", flush=True)
+        return
+    if kind == "operator_finished":
+        print(
+            "[agent] finished"
+            f" | success={event.get('success')}"
+            f" | events={event.get('event_count')}"
+            f" | session={event.get('session_ref')}",
+            flush=True,
+        )
+        return
+    if kind == "controller_event":
+        _print_controller_event(event)
+        return
+    if kind == "stage_validated":
+        print(f"[stage] validation passed: {event.get('stage_title')}", flush=True)
+        return
+    if kind == "stage_repair_started":
+        print(f"[stage] repair started: {event.get('stage_title')}", flush=True)
+        for error in list(event.get("errors", []))[:5]:
+            print(f"  - {error}", flush=True)
+        return
+    if kind == "stage_validation_failed":
+        print(f"[stage] validation failed: {event.get('stage_title')}", flush=True)
+        for error in list(event.get("errors", []))[:5]:
+            print(f"  - {error}", flush=True)
+        return
+    if kind == "stage_awaiting_review":
+        print(
+            f"[review] awaiting approval: {event.get('stage_title')}"
+            f"\n  draft: {event.get('draft_path')}",
+            flush=True,
+        )
+        return
+    if kind == "stage_approved":
+        print(
+            f"[stage] approved: {event.get('stage_title')}"
+            f"\n  final: {event.get('final_path')}",
+            flush=True,
+        )
+        return
+    if kind == "stage_refine_requested":
+        print(f"[stage] refinement requested: {event.get('stage_title')}", flush=True)
+        return
+    if kind == "stage_aborted":
+        print(f"[stage] aborted: {event.get('stage_title')} | {event.get('reason')}", flush=True)
+        return
+    if kind == "stage_failed":
+        print(f"[stage] failed: {event.get('stage_title')} | {event.get('error')}", flush=True)
+        return
+    if kind == "run_failed":
+        print(f"\n[run] failed at {event.get('failed_stage')}", flush=True)
+        for error in list(event.get("errors", []))[:10]:
+            print(f"  - {error}", flush=True)
+        return
+    if kind == "run_completed":
+        print(f"\n[run] completed: {event.get('run_root')}", flush=True)
+        return
+
+
+def _print_controller_event(event: dict[str, Any]) -> None:
+    event_kind = str(event.get("controller_event_kind") or "")
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    if event_kind == "session_started":
+        tools = payload.get("tools") or []
+        print(
+            "[claude] session started"
+            f" | model={payload.get('model')}"
+            f" | permission={payload.get('permission_mode')}"
+            f" | tools={len(tools)}",
+            flush=True,
+        )
+        return
+    if event_kind == "tool_call":
+        print(f"[claude] tool call: {payload.get('name')}", flush=True)
+        return
+    if event_kind == "tool_result":
+        print(f"[claude] tool result: {payload.get('tool_use_id')}", flush=True)
+        return
+    if event_kind == "message_completed":
+        text = _compact(str(payload.get("text") or ""))
+        if text:
+            print(f"[claude] {text}", flush=True)
+        return
+    if event_kind == "completed":
+        duration = payload.get("duration_ms")
+        suffix = f" | duration_ms={duration}" if duration is not None else ""
+        print(f"[claude] completed{suffix}", flush=True)
+        return
+    if event_kind == "failed":
+        print(f"[claude] failed: {payload.get('message')}", flush=True)
+        return
+
+
+def _compact(text: str, limit: int = 500) -> str:
+    compacted = " ".join(text.split())
+    if len(compacted) <= limit:
+        return compacted
+    return compacted[: limit - 3].rstrip() + "..."
 
 
 if __name__ == "__main__":
