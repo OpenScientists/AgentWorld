@@ -14,9 +14,9 @@
 [![Operators](https://img.shields.io/badge/Operators-3-orange.svg)](#-supported-operators)
 [![GitHub stars](https://img.shields.io/github/stars/OpenScientists/AgentWorld?style=social)](https://github.com/OpenScientists/AgentWorld)
 
-**Building the open ecosystem platform for strong agents**
+**A Python package for building filesystem-native strong-agent workflows and organizations**
 
-[Quick Start](#quick-start) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
+[Quick Start](#quick-start) | [Auto-Research](#auto-research-use-case) | [AutoR Parity](docs/autor-parity.md) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
 
 </div>
 
@@ -26,19 +26,23 @@
 
 ---
 
-AgentWorld is the foundation repository for a broader **open ecosystem platform for strong agents**.
+AgentWorld is a lower-level Python package for building **filesystem-native strong-agent workflows and organizations**.
 
-The long-term direction is larger than a graph runtime alone: it aims to provide a shared platform for **infrastructure**, **skills**, **benchmarks**, **applications**, and **community collaboration** around strong agents such as Claude Code, Codex, and OpenClaw.
+It is designed to sit below concrete applications such as AutoR-style automated research systems. Those applications can define their own research stages, approval policies, artifact rules, and UI surfaces while AgentWorld provides reusable primitives for controllers, operators, workspaces, stages, artifacts, approval gates, skills, and graph execution.
 
-This repository currently implements one core slice of that platform:
+This repository currently implements the foundation layer:
 
 - provider-specific control through **controllers**
 - uniform upper-layer execution through **operators**
 - structured inter-agent communication through an explicit **A2A protocol**
 - scheduling, checkpointing, and replay through a **graph runtime**
 - reusable domain guidance through a repo-local **skill marketplace**
+- durable run directories through **workspace primitives**
+- fixed-stage workflow support through **stage contracts**
+- artifact validation and indexing through **artifact primitives**
+- human or automated review through **approval gates**
 
-In other words, the graph runtime is an important implemented subsystem here, but it is not the full platform story.
+In other words, the graph runtime is one important subsystem, but AgentWorld is broader than graph execution alone. It is the package layer that can be used to build systems such as AutoR, benchmark workflows, research organizations, and future strong-agent applications.
 
 ## Overview
 
@@ -118,6 +122,14 @@ Run the in-memory planner / coder / reviewer graph:
 python examples/planner_coder_reviewer.py
 ```
 
+Run the AutoR-style auto-research workflow example:
+
+```bash
+python examples/auto-research/run.py "Study whether filesystem-native strong-agent organizations improve recoverability in long research workflows."
+```
+
+This example uses the real Claude Code controller by default and requires a working authenticated `claude` CLI.
+
 Run the real Claude Code smoke graph:
 
 ```bash
@@ -125,6 +137,44 @@ python examples/claude_real_smoke.py
 ```
 
 The Claude smoke case requires a working local `claude` CLI and an authenticated environment.
+
+<a id="auto-research-use-case"></a>
+## Auto-Research as a Use Case
+
+AutoR is a concrete human-centered research application. AgentWorld is positioned one layer below it.
+
+An AutoR-style system needs:
+
+- a durable run directory
+- a fixed research-stage pipeline
+- stage draft and final files
+- approved cross-stage memory
+- human or automated approval gates
+- artifact validation
+- operator session state
+- recovery and resume semantics
+
+AgentWorld now exposes the reusable primitives needed for that layer:
+
+| Auto-research need | AgentWorld primitive |
+| --- | --- |
+| run directory | `RunWorkspace` |
+| run manifest | `RunManifest` / `StageManifestEntry` |
+| stage contract | `StageSpec` |
+| stage execution | `StageOperator` / `StageRunRequest` / `StageRunResult` / `StageRepairRequest` |
+| artifact requirements | `ArtifactRequirement` |
+| artifact index + schema inference | `scan_artifacts` / `write_artifact_index` |
+| hypothesis manifest | `write_hypothesis_manifest` |
+| experiment manifest | `write_experiment_manifest` |
+| approved memory + handoff | `append_approved_stage_summary` / `write_stage_handoff` |
+| rollback + resume | `rollback_to_stage` / `AutoResearchWorkflow.resume(...)` |
+| approval boundary | `ApprovalGate` |
+| packaged workflow | `AutoResearchWorkflow` |
+| application factory | `run_auto_research` / `create_auto_research_app` |
+
+The reference example lives in [`examples/auto-research`](examples/auto-research). It does not vendor or modify AutoR. It demonstrates that an AutoR-like eight-stage research workflow can be expressed clearly on top of AgentWorld.
+
+The parity breakdown is documented in [`docs/autor-parity.md`](docs/autor-parity.md).
 
 <a id="how-it-works"></a>
 ## ⚙️ How It Works

@@ -49,9 +49,30 @@ To keep the work parallel, we should first freeze the target code layout. The mo
 docs/
 ├── todo.md
 ├── architecture.md
+├── auto-research-use-case.md
+├── autor-parity.md
 └── organization-layout.md
 
 src/agentworld/
+├── apps/
+│   ├── __init__.py
+│   └── auto_research.py
+├── approval/
+│   ├── __init__.py
+│   └── base.py
+├── artifacts/
+│   ├── __init__.py
+│   ├── index.py
+│   └── models.py
+├── manifest/
+│   ├── __init__.py
+│   └── run.py
+├── research/
+│   ├── __init__.py
+│   ├── evidence.py
+│   ├── experiment.py
+│   ├── hypothesis.py
+│   └── writing.py
 ├── benchmarks/
 │   ├── __init__.py
 │   ├── catalog.py
@@ -88,8 +109,16 @@ src/agentworld/
 │   ├── base.py
 │   ├── models.py
 │   └── filesystem.py
+├── stage/
+│   ├── __init__.py
+│   ├── handoff.py
+│   ├── markdown.py
+│   ├── models.py
+│   ├── operator.py
+│   └── prompts.py
 ├── workflows/
 │   ├── __init__.py
+│   ├── auto_research.py
 │   ├── knowledge.py
 │   ├── reasoning.py
 │   └── agentic.py
@@ -100,6 +129,11 @@ src/agentworld/
     └── organization.py
 
 tests/
+├── test_artifact_primitives.py
+├── test_auto_research_app.py
+├── test_auto_research_workflow.py
+├── test_research_manifests.py
+├── test_run_manifest.py
 ├── test_benchmark_catalog.py
 ├── test_benchmark_entrypoints.py
 ├── test_organization_models.py
@@ -110,9 +144,13 @@ tests/
 ├── test_policy_engine.py
 ├── test_operator_filesystem.py
 ├── test_organization_runtime.py
+├── test_workspace_primitives.py
 └── test_workflow_templates.py
 
 examples/
+├── auto-research/
+│   ├── README.md
+│   └── run.py
 ├── organization_lab.py
 ├── organization_review_board.py
 └── benchmarks/
@@ -124,7 +162,25 @@ examples/
 
 The important constraint is simple: each work item below should mostly own one directory or one file group. That keeps the team parallel.
 
-## 4. Benchmark Workflow Program
+## 4. Auto-Research Use Case
+
+AutoR should be treated as an upper-layer research application, not as a peer framework that AgentWorld copies directly.
+
+AgentWorld should sit one layer lower as the Python package that provides the reusable building blocks for AutoR-style systems:
+
+- filesystem-native run workspaces
+- fixed-stage workflow contracts
+- stage draft and final promotion
+- approved cross-stage memory
+- artifact requirements and indexing
+- human or automated approval gates
+- strong-agent operator backends
+
+The reference use case lives under `examples/auto-research/`. It should demonstrate that an AutoR-like eight-stage research workflow can be expressed clearly on top of AgentWorld without vendoring or modifying AutoR.
+
+The current parity map is maintained in `docs/autor-parity.md`. It should be updated whenever we move an AutoR capability from application policy into a reusable AgentWorld primitive.
+
+## 5. Benchmark Workflow Program
 
 These benchmarks are one of the main external targets for the framework.
 
@@ -134,7 +190,7 @@ The goal is not to build one-off scripts for each dataset. The goal is to use on
 - Stage 2 reasoning RL tasks
 - Stage 3 agent tool-calling tasks
 
-### 4.1 Target Benchmark Matrix
+### 5.1 Target Benchmark Matrix
 
 | Dataset | Training Stage | Priority | Discipline | Link | Task Type | Example Input | Example Output |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -150,7 +206,7 @@ The goal is not to build one-off scripts for each dataset. The goal is to use on
 | ResearchClawBench | 3: Agent Tool Calling | core | Multidisciplinary scientific research agent benchmark | GitHub: https://github.com/InternScience/ResearchClawBench<br>HF mirror: https://huggingface.co/datasets/InternScience/ResearchClawBench | Project-level | `Constrain ultralight bosons from black-hole posterior samples and produce a paper-level report` | `code + figures + report/report.md` |
 | SciCode | 3: Agent Tool Calling | core | Scientific computing and code generation | https://huggingface.co/datasets/SciCode1/SciCode | Project-level | `Write a script to integrate the Berendsen thermostat and barostat ...` | `Python implementation that passes provided tests` |
 
-### 4.2 Workflow Families We Need
+### 5.2 Workflow Families We Need
 
 We should cover the benchmark set through three reusable workflow families rather than through eleven unrelated pipelines.
 
@@ -160,7 +216,7 @@ We should cover the benchmark set through three reusable workflow families rathe
 
 **Agentic project workflows** should target Stage 3 datasets such as `ResearchClawBench` and `SciCode`. These workflows should support project bootstrapping, filesystem-native memory, long-running execution, tool calling, code generation, artifact production, and final report assembly.
 
-## 5. Parallel TODO
+## 6. Parallel TODO
 
 Tasks 1-6 are designed to run in parallel with minimal overlap. Tasks 7-8 are integration-facing and should start once the core file contracts are stable enough to import.
 

@@ -25,6 +25,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+!src/agentworld/manifest/
+!src/agentworld/manifest/*.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -218,7 +220,10 @@ dev-notes/
 worklog/
 scratch/
 artifacts/
+!src/agentworld/artifacts/
+!src/agentworld/artifacts/*.py
 outputs/
+examples/auto-research/runs/
 *.notes.md
 *.private.md
 *.private.txt

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentworld"
 version = "0.1.0"
-description = "A graph runtime for orchestrating strong agents."
+description = "A Python package for building filesystem-native strong-agent workflows and organizations."
 requires-python = ">=3.11"
 
 [tool.setuptools]
