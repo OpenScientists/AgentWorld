@@ -115,6 +115,38 @@ def validate_experiment_manifest(path: Path) -> list[str]:
     return problems
 
 
+def validate_experiment_execution(workspace: RunWorkspace) -> list[str]:
+    results_path = workspace.results_dir / "results.json"
+    if not results_path.exists():
+        return []
+    try:
+        payload = json.loads(results_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"results.json is not valid JSON: {exc}"]
+    if not isinstance(payload, dict):
+        return ["results.json must contain a JSON object."]
+
+    problems: list[str] = []
+    if payload.get("experiments_executed") is False:
+        problems.append("results.json reports experiments_executed=false.")
+    execution_status = str(payload.get("execution_status") or "").strip().lower()
+    if execution_status in {"blocked", "failed", "not_run", "not_executed", "skipped"}:
+        problems.append(f"results.json reports execution_status={execution_status}.")
+    if payload.get("execution_blocker"):
+        problems.append("results.json contains execution_blocker; the experiment did not complete.")
+
+    expected_outputs = payload.get("expected_outputs_on_success")
+    if isinstance(expected_outputs, dict) and not problems:
+        missing = []
+        for value in expected_outputs.values():
+            candidate = workspace.run_root / str(value)
+            if not candidate.exists():
+                missing.append(str(value))
+        if missing:
+            problems.append("results.json expected output(s) are missing: " + ", ".join(missing))
+    return problems
+
+
 def format_experiment_manifest_for_prompt(manifest: ExperimentManifest, max_results: int = 5) -> str:
     lines = [
         f"Experiment manifest generated at: {manifest.generated_at}",

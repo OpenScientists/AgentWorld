@@ -8,6 +8,7 @@ from .experiment import (
     ExperimentManifest,
     format_experiment_manifest_for_prompt,
     load_experiment_manifest,
+    validate_experiment_execution,
     validate_experiment_manifest,
     write_experiment_manifest,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "load_experiment_manifest",
     "load_hypothesis_manifest",
     "validate_citation_verification",
+    "validate_experiment_execution",
     "validate_experiment_manifest",
     "validate_literature_evidence",
     "write_experiment_manifest",

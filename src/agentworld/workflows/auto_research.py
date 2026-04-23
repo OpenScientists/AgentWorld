@@ -23,6 +23,7 @@ from ..manifest import (
 )
 from ..research import (
     validate_citation_verification,
+    validate_experiment_execution,
     validate_experiment_manifest,
     validate_literature_evidence,
     write_experiment_manifest,
@@ -548,6 +549,7 @@ class AutoResearchWorkflow:
             problems.extend(f"{stage.title}: {problem}" for problem in validate_literature_evidence(workspace))
         if stage.number >= 5:
             problems.extend(f"{stage.title}: {problem}" for problem in validate_experiment_manifest(workspace.experiment_manifest))
+            problems.extend(f"{stage.title}: {problem}" for problem in validate_experiment_execution(workspace))
         if stage.number >= 7:
             citation_path = workspace.artifacts_dir / "citation_verification.json"
             problems.extend(f"{stage.title}: {problem}" for problem in validate_citation_verification(citation_path))

@@ -88,7 +88,18 @@ class ScriptedStageOperator:
         if slug == "05_experimentation":
             write_text(
                 workspace.results_dir / "results.json",
-                json.dumps([{"setting": "base", "score": 0.81}, {"setting": "ablation", "score": 0.77}], indent=2),
+                json.dumps(
+                    {
+                        "experiments_executed": True,
+                        "execution_status": "completed",
+                        "model_results": [
+                            {"setting": "base", "score": 0.81},
+                            {"setting": "ablation", "score": 0.77},
+                        ],
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                ),
             )
             return ["workspace/results/results.json"]
         if slug == "06_analysis":

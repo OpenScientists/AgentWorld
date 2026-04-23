@@ -8,6 +8,7 @@ from pathlib import Path
 from agentworld.research import (
     format_experiment_manifest_for_prompt,
     format_hypothesis_manifest_for_prompt,
+    validate_experiment_execution,
     validate_experiment_manifest,
     write_experiment_manifest,
     write_hypothesis_manifest,
@@ -161,6 +162,55 @@ class ResearchManifestTests(unittest.TestCase):
             self.assertEqual(schema["kind"], "table")
             self.assertEqual(schema["row_count"], 2)
             self.assertIn("Result Artifacts", format_experiment_manifest_for_prompt(manifest))
+
+    def test_validate_experiment_execution_rejects_blocked_results(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = create_run_workspace(runs_dir=Path(tmp), run_id="blocked", goal="test")
+            write_text(
+                workspace.results_dir / "results.json",
+                json.dumps(
+                    {
+                        "experiments_executed": False,
+                        "execution_status": "blocked",
+                        "execution_blocker": {"reason": "permission approval required"},
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                ),
+            )
+
+            problems = validate_experiment_execution(workspace)
+
+            self.assertIn("results.json reports experiments_executed=false.", problems)
+            self.assertIn("results.json reports execution_status=blocked.", problems)
+            self.assertIn("results.json contains execution_blocker; the experiment did not complete.", problems)
+
+    def test_validate_experiment_execution_checks_declared_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = create_run_workspace(runs_dir=Path(tmp), run_id="outputs", goal="test")
+            write_text(workspace.results_dir / "metrics.json", "{}\n")
+            write_text(
+                workspace.results_dir / "results.json",
+                json.dumps(
+                    {
+                        "experiments_executed": True,
+                        "execution_status": "completed",
+                        "expected_outputs_on_success": {
+                            "metrics": "workspace/results/metrics.json",
+                            "figure": "workspace/figures/missing.png",
+                        },
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                ),
+            )
+
+            problems = validate_experiment_execution(workspace)
+
+            self.assertEqual(
+                problems,
+                ["results.json expected output(s) are missing: workspace/figures/missing.png"],
+            )
 
 
 if __name__ == "__main__":
