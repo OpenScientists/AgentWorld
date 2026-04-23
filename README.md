@@ -6,17 +6,17 @@
 
 <div align="center">
 
-[![Official Site](https://img.shields.io/badge/Official%20Site-0f8b7b.svg?logo=homepage)](https://openscientists.github.io/AgentWorld/)
-[![GitHub](https://img.shields.io/badge/GitHub-000000?logo=github&logoColor=white)](https://github.com/OpenScientists/AgentWorld)
-[![CI](https://github.com/OpenScientists/AgentWorld/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenScientists/AgentWorld/actions/workflows/ci.yml)
+[![Official Site](https://img.shields.io/badge/Official%20Site-0f8b7b.svg?logo=homepage)](https://scienceintelligence.github.io/AgentWorld/)
+[![GitHub](https://img.shields.io/badge/GitHub-000000?logo=github&logoColor=white)](https://github.com/ScienceIntelligence/AgentWorld)
+[![CI](https://github.com/ScienceIntelligence/AgentWorld/actions/workflows/ci.yml/badge.svg)](https://github.com/ScienceIntelligence/AgentWorld/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Skills](https://img.shields.io/badge/Skills-5-green.svg)](#-skill-marketplace)
 [![Operators](https://img.shields.io/badge/Operators-3-orange.svg)](#-supported-operators)
-[![GitHub stars](https://img.shields.io/github/stars/OpenScientists/AgentWorld?style=social)](https://github.com/OpenScientists/AgentWorld)
+[![GitHub stars](https://img.shields.io/github/stars/ScienceIntelligence/AgentWorld?style=social)](https://github.com/ScienceIntelligence/AgentWorld)
 
 **A Python package for building filesystem-native strong-agent workflows and organizations**
 
-[Quick Start](#quick-start) | [Auto-Research](#auto-research-use-case) | [AutoR Parity](docs/autor-parity.md) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
+[Quick Start](#quick-start) | [Usage](#usage) | [Auto-Research](#auto-research-use-case) | [AutoR Parity](docs/autor-parity.md) | [Skill Marketplace](#skill-marketplace) | [How It Works](#how-it-works) | [Supported Operators](#supported-operators) | [Examples](#examples) | [Roadmap](#roadmap)
 
 </div>
 
@@ -39,7 +39,9 @@ This repository currently implements the foundation layer:
 - reusable domain guidance through a repo-local **skill marketplace**
 - durable run directories through **workspace primitives**
 - fixed-stage workflow support through **stage contracts**
-- artifact validation and indexing through **artifact primitives**
+- run state, rollback, and resume through **manifest primitives**
+- artifact validation and schema inference through **artifact primitives**
+- hypothesis, experiment, and evidence ledgers through **research primitives**
 - human or automated review through **approval gates**
 
 In other words, the graph runtime is one important subsystem, but AgentWorld is broader than graph execution alone. It is the package layer that can be used to build systems such as AutoR, benchmark workflows, research organizations, and future strong-agent applications.
@@ -88,14 +90,16 @@ That changes the architecture:
 
 | Layer | Role | Status in this repository |
 | --- | --- | --- |
-| **Platform Foundation** | controllers, operators, protocol, runtime, state, graph execution | **Current implementation focus** |
+| **Platform Foundation** | controllers, operators, protocol, runtime, workspace, manifest, stage, artifacts, graph execution | **Current implementation focus** |
 | **Skill Platform** | reusable skill packaging, loading, references, scripts, future exchange | **Early implementation** |
 | **Benchmark + Evaluation** | benchmark tasks, scorecards, leaderboards, comparisons | **Planned** |
-| **Application Platform** | auto-research, reliable agentic systems, agentic RL, domain workflows | **Planned / example-driven** |
+| **Application Platform** | auto-research, reliable agentic systems, agentic RL, domain workflows | **Auto-research use case available** |
 | **Ecosystem Layer** | community contribution, collaboration, future marketplace dynamics | **Vision / planned** |
 
 ### 🆕 News
 
+- **2026-04-23** Added AutoR-class auto-research primitives: run manifests, stage repair, handoffs, approved memory, artifact schema inference, hypothesis manifests, and experiment manifests.
+- **2026-04-23** Moved the public repository to `ScienceIntelligence/AgentWorld`.
 - **2026-04-13** Added a dedicated `skills/` marketplace with research-oriented skills for paper search, literature synthesis, citation audit, experiment planning, and result audit.
 - **2026-04-13** Added explicit per-node `skills` support so each operator node can receive a different skill set through the runtime.
 - **2026-04-13** Published the GitHub Pages site under `docs/` and split the long architecture note into a dedicated design document.
@@ -104,9 +108,11 @@ That changes the architecture:
 <a id="quick-start"></a>
 ## 🚀 Quick Start
 
-Install the package:
+Clone and install the package in editable mode:
 
 ```bash
+git clone https://github.com/ScienceIntelligence/AgentWorld.git
+cd AgentWorld
 python -m pip install -e .
 ```
 
@@ -116,13 +122,19 @@ Run the test suite:
 python -m unittest discover -s tests -v
 ```
 
-Run the in-memory planner / coder / reviewer graph:
+Run the deterministic planner / coder / reviewer graph:
 
 ```bash
 python examples/planner_coder_reviewer.py
 ```
 
-Run the AutoR-style auto-research workflow example:
+Inspect the AutoR-style workflow CLI:
+
+```bash
+python examples/auto-research/run.py --help
+```
+
+Run an AutoR-style workflow with the real Claude Code controller:
 
 ```bash
 python examples/auto-research/run.py "Study whether filesystem-native strong-agent organizations improve recoverability in long research workflows."
@@ -137,6 +149,92 @@ python examples/claude_real_smoke.py
 ```
 
 The Claude smoke case requires a working local `claude` CLI and an authenticated environment.
+
+<a id="usage"></a>
+## Usage
+
+### Create A Durable Run Workspace
+
+```python
+from pathlib import Path
+
+from agentworld import create_run_workspace
+
+workspace = create_run_workspace(
+    runs_dir=Path("runs"),
+    run_id="my-run",
+    goal="Evaluate a recoverable multi-agent research workflow.",
+    config={"workflow": "custom-research"},
+)
+
+print(workspace.run_root)
+print(workspace.memory)
+print(workspace.artifact_index)
+```
+
+This creates a filesystem-native run layout with `goal.md`, `memory.md`, `run_config.json`, `run_manifest.json`, `artifact_index.json`, `prompt_cache/`, `operator_state/`, `stages/`, `handoffs/`, and `workspace/`.
+
+### Run Auto-Research From Python
+
+```python
+from pathlib import Path
+
+from agentworld import run_auto_research
+
+result = run_auto_research(
+    goal="Study whether filesystem-native strong-agent organizations improve long-running research workflows.",
+    runs_dir=Path("runs"),
+    approval_mode="manual",
+    permission_mode="default",
+)
+
+print(result.success)
+print(result.workspace.run_root)
+print(result.approved_stages)
+```
+
+This path uses `ClaudeCodeController` through `ControllerStageOperator`. It requires an authenticated local Claude Code CLI.
+
+For non-interactive validation gates:
+
+```python
+result = run_auto_research(
+    goal="Audit a scientific workflow for recoverability and evidence quality.",
+    runs_dir=Path("runs"),
+    approval_mode="validation-only",
+)
+```
+
+`validation-only` still uses the real controller. It only replaces the manual approval prompt with validation-based approval.
+
+### Build A Skill-Aware Graph
+
+```python
+from agentworld import AgentGraph, DefaultOperator, StaticController
+from agentworld.controller.base import ControllerEvent
+
+
+def planner_script(_request):
+    return [
+        ControllerEvent(kind="message_completed", payload={"text": "Plan ready."}),
+        ControllerEvent(kind="completed", payload={"state_patch": {"planned": True}}),
+    ]
+
+
+graph = AgentGraph(name="skill-aware-graph")
+graph.add_operator("planner", DefaultOperator("planner", StaticController(planner_script)))
+graph.add_node(
+    "plan",
+    operator="planner",
+    objective="Plan the study",
+    skills=["research-paper-search", "literature-synthesis"],
+)
+
+result = graph.compile().invoke({"task": "prepare a research plan"})
+print(result.state)
+```
+
+Each node can receive a different skill list. The runtime injects those skills into the operator request without changing provider-level configuration.
 
 <a id="auto-research-use-case"></a>
 ## Auto-Research as a Use Case
@@ -175,6 +273,41 @@ AgentWorld now exposes the reusable primitives needed for that layer:
 The reference example lives in [`examples/auto-research`](examples/auto-research). It does not vendor or modify AutoR. It demonstrates that an AutoR-like eight-stage research workflow can be expressed clearly on top of AgentWorld.
 
 The parity breakdown is documented in [`docs/autor-parity.md`](docs/autor-parity.md).
+
+### Auto-Research Run Layout
+
+An auto-research run writes durable state to a run root:
+
+```text
+run_root/
+├── goal.md
+├── user_input.txt
+├── memory.md
+├── run_config.json
+├── run_manifest.json
+├── artifact_index.json
+├── logs.txt
+├── events.jsonl
+├── logs_raw/
+├── prompt_cache/
+├── operator_state/
+├── stages/
+├── handoffs/
+└── workspace/
+    ├── literature/
+    ├── code/
+    ├── data/
+    ├── results/
+    ├── figures/
+    ├── writing/
+    ├── notes/
+    ├── reviews/
+    ├── artifacts/
+    ├── bootstrap/
+    └── profile/
+```
+
+The important files are intentionally plain files. Strong agents can inspect and update the workspace directly, while AgentWorld maintains the stage manifest, artifact index, approved memory, and handoffs.
 
 <a id="how-it-works"></a>
 ## ⚙️ How It Works
@@ -360,6 +493,18 @@ Validates:
 - real Claude Code execution without persistent Claude configuration changes
 - skill-aware output generation
 
+### Auto-Research Workflow
+
+[examples/auto-research](examples/auto-research)
+
+Validates:
+
+- real Claude Code backed stage execution
+- durable run manifests and per-stage operator state
+- stage draft, repair, review, and final promotion
+- approved memory and stage handoffs
+- artifact index, hypothesis manifest, and experiment manifest generation
+
 ## 📁 Repository Structure
 
 ```text
@@ -368,8 +513,14 @@ Validates:
 ├── docs/
 │   ├── index.html
 │   ├── architecture.md
+│   ├── auto-research-use-case.md
+│   ├── autor-parity.md
 │   └── assets/
 ├── examples/
+│   ├── auto-research/
+│   ├── claude_real_smoke.py
+│   ├── claude_skill_smoke.py
+│   └── planner_coder_reviewer.py
 ├── skills/
 │   ├── README.md
 │   ├── research-paper-search/
@@ -378,18 +529,28 @@ Validates:
 │   ├── experiment-planning/
 │   └── result-audit/
 ├── src/agentworld/
+│   ├── apps/
+│   ├── approval/
+│   ├── artifacts/
 │   ├── controller/
 │   ├── graph/
+│   ├── manifest/
 │   ├── operator/
 │   ├── protocol/
-│   └── runtime/
+│   ├── research/
+│   ├── runtime/
+│   ├── stage/
+│   ├── workflows/
+│   └── workspace/
 └── tests/
 ```
 
 ## 📚 Documentation
 
-- Official site: [openscientists.github.io/AgentWorld](https://openscientists.github.io/AgentWorld/)
+- Official site: [scienceintelligence.github.io/AgentWorld](https://scienceintelligence.github.io/AgentWorld/)
 - Architecture note: [docs/architecture.md](docs/architecture.md)
+- Auto-research use case: [docs/auto-research-use-case.md](docs/auto-research-use-case.md)
+- AutoR parity map: [docs/autor-parity.md](docs/autor-parity.md)
 - Skill marketplace: [skills/README.md](skills/README.md)
 
 <a id="roadmap"></a>
@@ -425,11 +586,11 @@ Open an issue for bugs, design questions, controller support requests, or skill 
 
 ### ⭐ Star History
 
-<a href="https://www.star-history.com/#OpenScientists/AgentWorld&Date">
+<a href="https://www.star-history.com/#ScienceIntelligence/AgentWorld&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=OpenScientists/AgentWorld&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=OpenScientists/AgentWorld&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=OpenScientists/AgentWorld&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ScienceIntelligence/AgentWorld&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ScienceIntelligence/AgentWorld&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ScienceIntelligence/AgentWorld&type=Date" />
   </picture>
 </a>
 
