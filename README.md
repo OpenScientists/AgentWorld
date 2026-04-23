@@ -138,22 +138,109 @@ Useful options:
 
 ```bash
 python examples/auto-research/run.py --approval-mode validation-only "..."
-python examples/auto-research/run.py --resume-run examples/auto-research/runs/<run-id> --approval-mode validation-only
+python examples/auto-research/run.py --resume-run /tmp/agentworld-auto-research-runs/<run-id> --approval-mode validation-only
 python examples/auto-research/run.py --quiet "..."
 python examples/auto-research/run.py --timeout 7200 --max-attempts 2 "..."
 ```
 
-Run an AutoR-style workflow with the real Claude Code controller:
+Run a complete AutoR-style workflow with the real Claude Code controller:
+
+```bash
+python - <<'PY'
+import importlib.util
+
+for package in ["sklearn", "numpy", "matplotlib"]:
+    if importlib.util.find_spec(package) is None:
+        raise SystemExit(f"Missing required package: {package}")
+print("Python dependencies are available.")
+PY
+
+claude --version
+```
 
 ```bash
 python examples/auto-research/run.py \
+  --runs-dir /tmp/agentworld-auto-research-runs \
   --approval-mode validation-only \
-  --permission-mode acceptEdits \
+  --permission-mode bypassPermissions \
   --max-attempts 2 \
-  "Build and evaluate a handwritten digit classification model on the scikit-learn digits dataset. Train at least two classical machine learning baselines, compare their accuracy and confusion matrices, save reusable Python code, produce one summary figure, and write a concise research-style report with methods, results, limitations, and reproducibility notes."
+  --timeout 7200 \
+  "Build and evaluate a handwritten digit classification model on the scikit-learn digits dataset. Train SVM-RBF, RandomForest, kNN, LogisticRegression, and DecisionTree baselines. The experiment stage must actually execute the Python training script and produce real cross-validation results, held-out test results, confusion matrices, hypothesis verdicts, figures, and a paper-style report. Do not use predicted or literature-only results as a substitute for execution."
 ```
 
 This example uses the real Claude Code controller by default and requires a working authenticated `claude` CLI. The CLI prints live run, stage, Claude session, tool, validation, repair, and review progress. Use `--quiet` if you only want the final JSON result.
+
+`bypassPermissions` is used here because the experimentation stage must run Python training code. Safer edit-only modes can allow file creation but block `python workspace/code/implementation.py`, producing an invalid run where the report is based on predictions rather than executed results.
+
+After the run finishes, validate the produced artifacts:
+
+```bash
+RUN_ROOT="$(ls -td /tmp/agentworld-auto-research-runs/* | head -1)"
+
+python - <<PY
+import json
+from pathlib import Path
+
+root = Path("$RUN_ROOT")
+manifest = json.loads((root / "run_manifest.json").read_text())
+results = json.loads((root / "workspace/results/results.json").read_text())
+
+required = [
+    "workspace/results/results.json",
+    "workspace/results/cv_results.json",
+    "workspace/results/test_results.json",
+    "workspace/results/ablation_results.json",
+    "workspace/results/hypothesis_verdicts.json",
+    "workspace/results/confusion_matrices.npz",
+    "workspace/results/experiment_manifest.json",
+    "workspace/figures/accuracy_comparison.png",
+    "workspace/figures/confusion_matrices.png",
+    "workspace/figures/summary.svg",
+    "workspace/writing/main.tex",
+    "workspace/writing/references.bib",
+    "workspace/artifacts/paper.pdf",
+    "workspace/artifacts/build_log.txt",
+    "workspace/artifacts/citation_verification.json",
+    "workspace/artifacts/self_review.json",
+]
+
+missing = [path for path in required if not (root / path).exists()]
+approved = sum(1 for stage in manifest["stages"] if stage["approved"])
+blocked = bool(results.get("execution_blocker")) or results.get("experiments_executed") is False
+exit_code = results.get("exit_code")
+
+print("run_root:", root)
+print("run_status:", manifest["run_status"])
+print("approved:", approved, "/", len(manifest["stages"]))
+print("exit_code:", exit_code)
+print("missing:", missing or "none")
+
+if manifest["run_status"] != "completed":
+    raise SystemExit("Run did not complete.")
+if approved != len(manifest["stages"]):
+    raise SystemExit("Not all stages were approved.")
+if blocked:
+    raise SystemExit("Experiment execution was blocked.")
+if exit_code not in (0, None):
+    raise SystemExit(f"Experiment script failed with exit_code={exit_code}.")
+if missing:
+    raise SystemExit("Required artifacts are missing.")
+
+cv = results.get("cv_results", {})
+print("cv_accuracy:")
+for model, payload in cv.items():
+    if isinstance(payload, dict) and "mean_cv_accuracy" in payload:
+        print(f"  {model}: {payload['mean_cv_accuracy']:.4f}")
+PY
+```
+
+Expected checks:
+
+- `run_status` is `completed`
+- every stage is approved
+- `workspace/results/results.json` records `exit_code: 0` or equivalent successful execution metadata
+- no `execution_blocker` is present
+- result JSON files, confusion matrices, figures, manuscript source, PDF, citation verification, and self-review artifacts exist
 
 Run the real Claude Code smoke graph:
 
@@ -203,8 +290,8 @@ result = run_auto_research(
         "concise research-style report."
     ),
     runs_dir=Path("runs"),
-    approval_mode="manual",
-    permission_mode="default",
+    approval_mode="validation-only",
+    permission_mode="bypassPermissions",
 )
 
 print(result.success)
@@ -225,6 +312,8 @@ result = run_auto_research(
 ```
 
 `validation-only` still uses the real controller. It only replaces the manual approval prompt with validation-based approval.
+
+For experiment-heavy workflows, use a permission mode that allows the strong agent to execute local commands inside the run workspace. If command execution is blocked, AgentWorld validation rejects result files that explicitly report blocked, skipped, or unexecuted experiments.
 
 ### Build A Skill-Aware Graph
 
@@ -327,6 +416,63 @@ run_root/
 ```
 
 The important files are intentionally plain files. Strong agents can inspect and update the workspace directly, while AgentWorld maintains the stage manifest, artifact index, approved memory, and handoffs.
+
+### Complete Auto-Research Case
+
+The recommended smoke case is a small, fully executable scientific workflow:
+
+1. build a literature-backed plan for the scikit-learn digits dataset
+2. generate typed hypotheses
+3. design the study
+4. write reusable training code
+5. execute the experiment
+6. analyze measured results
+7. write a paper-style report
+8. prepare release artifacts
+
+Run it with Claude Code:
+
+```bash
+python examples/auto-research/run.py \
+  --runs-dir /tmp/agentworld-auto-research-runs \
+  --approval-mode validation-only \
+  --permission-mode bypassPermissions \
+  --max-attempts 2 \
+  --timeout 7200 \
+  "Build and evaluate a handwritten digit classification model on the scikit-learn digits dataset. Train SVM-RBF, RandomForest, kNN, LogisticRegression, and DecisionTree baselines. The experiment stage must actually execute the Python training script and produce real cross-validation results, held-out test results, confusion matrices, hypothesis verdicts, figures, and a paper-style report. Do not use predicted or literature-only results as a substitute for execution."
+```
+
+A valid completed run should include at least:
+
+```text
+workspace/results/results.json
+workspace/results/cv_results.json
+workspace/results/test_results.json
+workspace/results/ablation_results.json
+workspace/results/hypothesis_verdicts.json
+workspace/results/confusion_matrices.npz
+workspace/figures/accuracy_comparison.png
+workspace/figures/confusion_matrices.png
+workspace/figures/summary.svg
+workspace/writing/main.tex
+workspace/writing/references.bib
+workspace/artifacts/paper.pdf
+workspace/artifacts/build_log.txt
+workspace/artifacts/citation_verification.json
+workspace/artifacts/self_review.json
+```
+
+If a run fails or is interrupted, resume it from the run root:
+
+```bash
+python examples/auto-research/run.py \
+  --resume-run /tmp/agentworld-auto-research-runs/<run-id> \
+  --approval-mode validation-only \
+  --permission-mode bypassPermissions \
+  --max-attempts 2
+```
+
+Do not treat a run as successful just because `run_manifest.json` says `completed`. The experiment artifacts must also show successful execution, with no `execution_blocker` and no `experiments_executed=false` marker.
 
 <a id="how-it-works"></a>
 ## ⚙️ How It Works
