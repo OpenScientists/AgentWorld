@@ -40,6 +40,9 @@ class AutoResearchApp:
     ) -> AutoResearchRunResult:
         return self.workflow.run(goal=goal, runs_dir=runs_dir, run_id=run_id)
 
+    def resume(self, *, run_root: Path) -> AutoResearchRunResult:
+        return self.workflow.resume(run_root=run_root)
+
 
 def create_auto_research_app(
     *,
@@ -124,3 +127,30 @@ def run_auto_research(
         progress_sink=progress_sink,
     )
     return app.run(goal=goal, runs_dir=runs_dir, run_id=run_id)
+
+
+def resume_auto_research(
+    *,
+    run_root: Path,
+    backend: BackendName = "claude-code",
+    approval_mode: ApprovalMode = "manual",
+    model: str | None = None,
+    claude_command: str = "claude",
+    permission_mode: str = "default",
+    tools: tuple[str, ...] | list[str] | None = None,
+    timeout_s: int = 14400,
+    max_attempts: int = 3,
+    progress_sink: AutoResearchProgressSink | None = None,
+) -> AutoResearchRunResult:
+    app = create_auto_research_app(
+        backend=backend,
+        approval_mode=approval_mode,
+        model=model,
+        claude_command=claude_command,
+        permission_mode=permission_mode,
+        tools=tools,
+        timeout_s=timeout_s,
+        max_attempts=max_attempts,
+        progress_sink=progress_sink,
+    )
+    return app.resume(run_root=run_root)

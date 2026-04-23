@@ -36,6 +36,12 @@ TYPED_HYPOTHESIS_HEADINGS = (
     "Paper Claims (Provisional)",
 )
 
+TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS = {
+    "Theoretical Propositions": r"(?<![A-Z0-9])(?:TH-\d+|T\d+)(?![A-Z0-9])",
+    "Empirical Hypotheses": r"(?<![A-Z0-9])(?:EH-\d+|H\d+)(?![A-Z0-9])",
+    "Paper Claims (Provisional)": r"(?<![A-Z0-9])(?:PC-\d+|C\d+)(?![A-Z0-9])",
+}
+
 PLACEHOLDER_PATTERNS = (
     r"\[todo\]",
     r"\[tbd\]",
@@ -200,15 +206,13 @@ def validate_stage_markdown(
                 "Stage 02 'Key Results' must include typed subsections for Theoretical Propositions, "
                 "Empirical Hypotheses, and Paper Claims (Provisional)."
             )
-        identifier_patterns = {
-            "Theoretical Propositions": r"\*\*T\d+\*\*:",
-            "Empirical Hypotheses": r"\*\*H\d+\*\*:",
-            "Paper Claims (Provisional)": r"\*\*C\d+\*\*:",
-        }
-        for heading, pattern in identifier_patterns.items():
+        for heading, pattern in TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS.items():
             section = hypothesis_sections.get(heading)
-            if section is not None and not re.search(pattern, section):
-                problems.append(f"Stage 02 subsection '{heading}' must include at least one typed identifier.")
+            if section is not None and not re.search(pattern, section, flags=re.IGNORECASE):
+                problems.append(
+                    f"Stage 02 subsection '{heading}' must include at least one typed identifier "
+                    "such as TH-01, EH-01, PC-01, T1, H1, or C1."
+                )
 
     options_section = extract_markdown_section(markdown, "Your Options")
     if options_section is not None:

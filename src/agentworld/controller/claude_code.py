@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -130,6 +131,7 @@ class ClaudeCodeController(AgentController):
                 command,
                 cwd=cwd,
                 env=env,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -229,23 +231,25 @@ class ClaudeCodeController(AgentController):
     def _parse_stream_output(self, lines: Iterable[str]) -> list[ControllerEvent]:
         events: list[ControllerEvent] = []
         for line in lines:
-            line = line.strip()
+            line = _strip_ansi(line).strip()
             if not line:
                 continue
 
             try:
-                payload = json.loads(line)
+                payload = _clean_json_value(json.loads(line))
             except json.JSONDecodeError:
                 events.append(
                     ControllerEvent(
-                        kind="failed",
+                        kind="log",
                         payload={
-                            "code": "invalid_json_line",
-                            "message": "Claude returned a non-JSON line while using stream-json mode.",
-                            "details": {"line": line},
+                            "stream": "stdout",
+                            "text": line,
                         },
                     )
                 )
+                continue
+            if not isinstance(payload, dict):
+                events.append(ControllerEvent(kind="log", payload={"stream": "stdout", "text": str(payload)}))
                 continue
 
             record_type = payload.get("type")
@@ -352,3 +356,20 @@ class ClaudeCodeController(AgentController):
         if mode in valid_modes:
             return str(mode)
         return self.permission_mode
+
+
+ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def _strip_ansi(value: str) -> str:
+    return ANSI_PATTERN.sub("", value)
+
+
+def _clean_json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return _strip_ansi(value)
+    if isinstance(value, list):
+        return [_clean_json_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _clean_json_value(item) for key, item in value.items()}
+    return value

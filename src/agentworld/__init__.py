@@ -1,6 +1,12 @@
 from .artifacts import ArtifactIndex, ArtifactRecord, ArtifactRequirement
 from .controller.base import StaticController
-from .apps.auto_research import AutoResearchApp, AutoResearchAppConfig, create_auto_research_app, run_auto_research
+from .apps.auto_research import (
+    AutoResearchApp,
+    AutoResearchAppConfig,
+    create_auto_research_app,
+    resume_auto_research,
+    run_auto_research,
+)
 from .graph.builder import AgentGraph
 from .graph.compiled import CompiledGraph, GraphRunResult
 from .graph.reducers import append_list, last_value, merge_dict
@@ -48,5 +54,6 @@ __all__ = [
     "create_auto_research_app",
     "last_value",
     "merge_dict",
+    "resume_auto_research",
     "run_auto_research",
 ]

@@ -78,6 +78,8 @@ def default_stage_prompt(stage: StageSpec) -> str:
                 "Use the paths exactly as written, relative to the run root."
             ),
             "{{ARTIFACT_REQUIREMENTS}}",
+            "# Stage-Specific Contract",
+            stage_specific_contract(stage),
             "# Feedback",
             "{{FEEDBACK}}",
             "# Continuation Context",
@@ -95,6 +97,20 @@ def default_stage_prompt(stage: StageSpec) -> str:
             "```md\n{{REQUIRED_STAGE_TEMPLATE}}\n```",
         ]
     )
+
+
+def stage_specific_contract(stage: StageSpec) -> str:
+    if stage.slug == "02_hypothesis_generation":
+        return (
+            "For Stage 02, the `## Key Results` section must contain exactly these typed subsections: "
+            "`### Theoretical Propositions`, `### Empirical Hypotheses`, and "
+            "`### Paper Claims (Provisional)`. Each subsection must include at least one explicit ID. "
+            "Use `TH-01`, `TH-02`, ... for theoretical propositions, `EH-01`, `EH-02`, ... for empirical "
+            "hypotheses, and `PC-01`, `PC-02`, ... for paper claims. Markdown tables are acceptable, "
+            "but the first column must be `ID`. Also write `workspace/notes/hypothesis_manifest.json` "
+            "with non-empty theoretical, empirical, and paper-claim entries."
+        )
+    return "No additional stage-specific contract."
 
 
 def _build_structured_context(stage: StageSpec, workspace: RunWorkspace, artifact_index) -> str:

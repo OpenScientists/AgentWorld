@@ -60,6 +60,22 @@ class StageOperator(Protocol):
 
 
 def required_stage_template(stage: StageSpec) -> str:
+    key_results_template = "[Present the main results, findings, conclusions, or concrete outputs for this stage.]"
+    if stage.slug == "02_hypothesis_generation":
+        key_results_template = (
+            "### Theoretical Propositions\n"
+            "| ID | Statement | Derived From | Verification |\n"
+            "| --- | --- | --- | --- |\n"
+            "| TH-01 | [theoretical proposition] | [source claim ids] | [how it will be checked] |\n\n"
+            "### Empirical Hypotheses\n"
+            "| ID | Statement | Derived From | Verification |\n"
+            "| --- | --- | --- | --- |\n"
+            "| EH-01 | [empirical hypothesis] | [source claim ids] | [experiment or metric] |\n\n"
+            "### Paper Claims (Provisional)\n"
+            "| ID | Statement | Derived From | Status |\n"
+            "| --- | --- | --- | --- |\n"
+            "| PC-01 | [paper-level claim] | [source claim ids] | provisional |"
+        )
     return (
         f"# {stage.title}\n\n"
         "## Objective\n"
@@ -69,7 +85,7 @@ def required_stage_template(stage: StageSpec) -> str:
         "## What I Did\n"
         "[Describe what you actually did in this stage.]\n\n"
         "## Key Results\n"
-        "[Present the main results, findings, conclusions, or concrete outputs for this stage.]\n\n"
+        f"{key_results_template}\n\n"
         "## Files Produced\n"
         "- `[relative/path]` - [what it contains]\n\n"
         "## Decision Ledger\n"

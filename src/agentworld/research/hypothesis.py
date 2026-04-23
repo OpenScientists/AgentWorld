@@ -5,7 +5,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..stage.markdown import TYPED_HYPOTHESIS_HEADINGS, extract_typed_hypothesis_sections
+from ..stage.markdown import (
+    TYPED_HYPOTHESIS_HEADINGS,
+    TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS,
+    extract_typed_hypothesis_sections,
+)
 from ..utils import utc_now
 from ..workspace import RunWorkspace
 
@@ -85,12 +89,15 @@ def build_hypothesis_manifest(stage_markdown: str) -> HypothesisManifest | None:
     sections = extract_typed_hypothesis_sections(stage_markdown)
     if len(sections) < len(TYPED_HYPOTHESIS_HEADINGS):
         return None
-    return HypothesisManifest(
+    manifest = HypothesisManifest(
         generated_at=utc_now(),
         theoretical_propositions=_parse_section(sections["Theoretical Propositions"], "theoretical_proposition"),
         empirical_hypotheses=_parse_section(sections["Empirical Hypotheses"], "empirical_hypothesis"),
         paper_claims=_parse_section(sections["Paper Claims (Provisional)"], "paper_claim"),
     )
+    if not (manifest.theoretical_propositions or manifest.empirical_hypotheses or manifest.paper_claims):
+        return None
+    return manifest
 
 
 def write_hypothesis_manifest(workspace: RunWorkspace, stage_markdown: str) -> HypothesisManifest | None:
@@ -138,16 +145,22 @@ def format_hypothesis_manifest_for_prompt(manifest: HypothesisManifest) -> str:
 
 def _parse_section(section_text: str, claim_type: str) -> tuple[HypothesisEntry, ...]:
     entries: list[HypothesisEntry] = []
+    seen: set[str] = set()
     current: dict[str, str] | None = None
+    identifier_pattern = _identifier_pattern_for_type(claim_type)
     for raw_line in section_text.splitlines():
         stripped = raw_line.strip()
         if not stripped:
             continue
-        entry_match = re.match(r"^-\s+\*\*([A-Z]\d+)\*\*:\s*(.+)$", stripped)
+        entry_match = re.match(
+            rf"^-\s+(?:\*\*)?({identifier_pattern})(?:\*\*)?\s*[:\-]\s*(.+)$",
+            stripped,
+            flags=re.IGNORECASE,
+        )
         if entry_match:
             if current is not None:
-                entries.append(_entry_from_state(current, claim_type))
-            current = {"id": entry_match.group(1).strip(), "statement": entry_match.group(2).strip()}
+                _append_entry(entries, seen, current, claim_type)
+            current = {"id": _normalize_identifier(entry_match.group(1)), "statement": entry_match.group(2).strip()}
             continue
         if current is None:
             continue
@@ -164,8 +177,81 @@ def _parse_section(section_text: str, claim_type: str) -> tuple[HypothesisEntry,
             elif label == "status":
                 current["status"] = value
     if current is not None:
-        entries.append(_entry_from_state(current, claim_type))
+        _append_entry(entries, seen, current, claim_type)
+
+    for table_entry in _parse_table_entries(section_text, claim_type):
+        if table_entry.identifier not in seen:
+            seen.add(table_entry.identifier)
+            entries.append(table_entry)
     return tuple(entries)
+
+
+def _parse_table_entries(section_text: str, claim_type: str) -> tuple[HypothesisEntry, ...]:
+    entries: list[HypothesisEntry] = []
+    identifier_pattern = _identifier_pattern_for_type(claim_type)
+    headers: list[str] = []
+    for raw_line in section_text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [_clean_table_cell(cell) for cell in stripped.strip("|").split("|")]
+        if not cells or _is_separator_row(cells):
+            continue
+        first = cells[0].lower()
+        if first in {"id", "identifier", "claim id", "hypothesis id"}:
+            headers = [_normalize_header(cell) for cell in cells]
+            continue
+        identifier_match = re.search(identifier_pattern, cells[0], flags=re.IGNORECASE)
+        if identifier_match is None:
+            continue
+        identifier = _normalize_identifier(identifier_match.group(0))
+        row = _row_by_header(headers, cells)
+        statement = _first_nonempty(
+            row.get("statement"),
+            _join_nonempty(row.get("title"), row.get("prediction")),
+            row.get("title"),
+            _join_nonempty(*cells[1:3]),
+        )
+        if not statement:
+            continue
+        entries.append(
+            HypothesisEntry(
+                identifier=identifier,
+                statement=statement,
+                claim_type=claim_type,
+                derived_from=_first_nonempty(
+                    row.get("derived from"),
+                    row.get("source"),
+                    row.get("sources"),
+                    row.get("source claims"),
+                    row.get("source claim ids"),
+                ),
+                depends_on=_first_nonempty(row.get("depends on"), row.get("dependency")),
+                verification_needed=_first_nonempty(
+                    row.get("verification"),
+                    row.get("falsification"),
+                    row.get("falsification criterion"),
+                    row.get("experiment"),
+                    row.get("experiment action"),
+                    row.get("metric"),
+                ),
+                status=_first_nonempty(row.get("status"), _status_from_confidence(row.get("confidence"))),
+            )
+        )
+    return tuple(entries)
+
+
+def _append_entry(
+    entries: list[HypothesisEntry],
+    seen: set[str],
+    state: dict[str, str],
+    claim_type: str,
+) -> None:
+    entry = _entry_from_state(state, claim_type)
+    if not entry.identifier or entry.identifier in seen:
+        return
+    seen.add(entry.identifier)
+    entries.append(entry)
 
 
 def _entry_from_state(state: dict[str, str], claim_type: str) -> HypothesisEntry:
@@ -178,3 +264,55 @@ def _entry_from_state(state: dict[str, str], claim_type: str) -> HypothesisEntry
         verification_needed=state.get("verification_needed", ""),
         status=state.get("status", ""),
     )
+
+
+def _identifier_pattern_for_type(claim_type: str) -> str:
+    if claim_type == "theoretical_proposition":
+        return TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS["Theoretical Propositions"]
+    if claim_type == "empirical_hypothesis":
+        return TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS["Empirical Hypotheses"]
+    if claim_type == "paper_claim":
+        return TYPED_HYPOTHESIS_IDENTIFIER_PATTERNS["Paper Claims (Provisional)"]
+    return r"(?<![A-Z0-9])(?:TH-\d+|EH-\d+|PC-\d+|T\d+|H\d+|C\d+)(?![A-Z0-9])"
+
+
+def _normalize_identifier(identifier: str) -> str:
+    return re.sub(r"\s+", "", identifier.strip().upper())
+
+
+def _clean_table_cell(cell: str) -> str:
+    text = re.sub(r"<br\s*/?>", " ", cell, flags=re.IGNORECASE)
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    return " ".join(text.split())
+
+
+def _normalize_header(header: str) -> str:
+    return _clean_table_cell(header).strip().lower().replace("_", " ")
+
+
+def _is_separator_row(cells: list[str]) -> bool:
+    return all(re.fullmatch(r":?-{3,}:?", cell.strip()) for cell in cells if cell.strip())
+
+
+def _row_by_header(headers: list[str], cells: list[str]) -> dict[str, str]:
+    if not headers:
+        return {}
+    return {header: cells[index] for index, header in enumerate(headers) if index < len(cells)}
+
+
+def _first_nonempty(*values: str | None) -> str:
+    for value in values:
+        if value and value.strip():
+            return value.strip()
+    return ""
+
+
+def _join_nonempty(*values: str | None) -> str:
+    return ". ".join(value.strip() for value in values if value and value.strip())
+
+
+def _status_from_confidence(confidence: str | None) -> str:
+    if not confidence:
+        return ""
+    return f"confidence: {confidence.strip()}"

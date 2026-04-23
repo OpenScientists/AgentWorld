@@ -9,7 +9,11 @@ This example intentionally does not vendor or modify AutoR. It implements an Aut
 ## Run
 
 ```bash
-python examples/auto-research/run.py "Study whether filesystem-native strong-agent organizations improve recoverability in long research workflows."
+python examples/auto-research/run.py \
+  --approval-mode validation-only \
+  --permission-mode acceptEdits \
+  --max-attempts 2 \
+  "Build and evaluate a handwritten digit classification model on the scikit-learn digits dataset. Train at least two classical machine learning baselines, compare their accuracy and confusion matrices, save reusable Python code, produce one summary figure, and write a concise research-style report with methods, results, limitations, and reproducibility notes."
 ```
 
 By default this uses Claude Code through `ClaudeCodeController`, so it requires:
@@ -52,7 +56,17 @@ examples/auto-research/runs/
 For non-interactive validation runs, use:
 
 ```bash
-python examples/auto-research/run.py --approval-mode validation-only "..."
+python examples/auto-research/run.py --approval-mode validation-only "Build a compact handwritten digit classifier evaluation report on the scikit-learn digits dataset."
 ```
 
 That mode still uses the real controller. It only replaces the manual approval prompt with validation-based approval.
+
+To continue a failed or interrupted run, point `--resume-run` at the run root:
+
+```bash
+python examples/auto-research/run.py \
+  --resume-run examples/auto-research/runs/<run-id> \
+  --approval-mode validation-only \
+  --permission-mode acceptEdits \
+  --max-attempts 2
+```

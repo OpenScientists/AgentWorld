@@ -91,6 +91,30 @@ class ClaudeCodeControllerTests(unittest.TestCase):
         self.assertEqual(events[3].payload["tool_use_id"], "tool-1")
         self.assertEqual(events[4].payload["result"], "DONE")
 
+    def test_parse_stream_output_tolerates_non_json_noise_and_strips_ansi(self) -> None:
+        controller = ClaudeCodeController()
+        lines = [
+            "1",
+            "\x1b[1mnot json\x1b[0m",
+            json.dumps(
+                {
+                    "type": "system",
+                    "subtype": "init",
+                    "session_id": "sess-ansi",
+                    "model": "claude-sonnet\x1b[1m",
+                    "tools": [],
+                    "permissionMode": "acceptEdits",
+                }
+            ),
+        ]
+
+        events = controller._parse_stream_output(lines)
+
+        self.assertEqual([event.kind for event in events], ["log", "log", "session_started"])
+        self.assertEqual(events[0].payload["text"], "1")
+        self.assertEqual(events[1].payload["text"], "not json")
+        self.assertEqual(events[2].payload["model"], "claude-sonnet")
+
     def test_stream_runs_command_and_yields_events_incrementally(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             script = Path(tmp) / "fake_claude.py"

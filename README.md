@@ -138,6 +138,7 @@ Useful options:
 
 ```bash
 python examples/auto-research/run.py --approval-mode validation-only "..."
+python examples/auto-research/run.py --resume-run examples/auto-research/runs/<run-id> --approval-mode validation-only
 python examples/auto-research/run.py --quiet "..."
 python examples/auto-research/run.py --timeout 7200 --max-attempts 2 "..."
 ```
@@ -145,7 +146,11 @@ python examples/auto-research/run.py --timeout 7200 --max-attempts 2 "..."
 Run an AutoR-style workflow with the real Claude Code controller:
 
 ```bash
-python examples/auto-research/run.py "Study whether filesystem-native strong-agent organizations improve recoverability in long research workflows."
+python examples/auto-research/run.py \
+  --approval-mode validation-only \
+  --permission-mode acceptEdits \
+  --max-attempts 2 \
+  "Build and evaluate a handwritten digit classification model on the scikit-learn digits dataset. Train at least two classical machine learning baselines, compare their accuracy and confusion matrices, save reusable Python code, produce one summary figure, and write a concise research-style report with methods, results, limitations, and reproducibility notes."
 ```
 
 This example uses the real Claude Code controller by default and requires a working authenticated `claude` CLI. The CLI prints live run, stage, Claude session, tool, validation, repair, and review progress. Use `--quiet` if you only want the final JSON result.
@@ -190,7 +195,13 @@ from pathlib import Path
 from agentworld import run_auto_research
 
 result = run_auto_research(
-    goal="Study whether filesystem-native strong-agent organizations improve long-running research workflows.",
+    goal=(
+        "Build and evaluate a handwritten digit classification model on the "
+        "scikit-learn digits dataset. Train at least two classical machine "
+        "learning baselines, compare their accuracy and confusion matrices, "
+        "save reusable Python code, produce one summary figure, and write a "
+        "concise research-style report."
+    ),
     runs_dir=Path("runs"),
     approval_mode="manual",
     permission_mode="default",
@@ -207,7 +218,7 @@ For non-interactive validation gates:
 
 ```python
 result = run_auto_research(
-    goal="Audit a scientific workflow for recoverability and evidence quality.",
+    goal="Build a compact handwritten digit classifier evaluation report on the scikit-learn digits dataset.",
     runs_dir=Path("runs"),
     approval_mode="validation-only",
 )
